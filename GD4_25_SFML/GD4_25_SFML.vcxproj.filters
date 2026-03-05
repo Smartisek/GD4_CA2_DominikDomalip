@@ -150,6 +150,9 @@
     <ClCompile Include="game_server.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="network_node.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="utility.hpp">
@@ -183,9 +186,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="sprite_node.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="world.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="command_queue.hpp">
@@ -351,6 +351,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="game_server.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="world.hpp">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="network_node.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

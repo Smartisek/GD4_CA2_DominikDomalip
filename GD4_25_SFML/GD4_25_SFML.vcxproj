@@ -152,6 +152,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="menu_state.cpp" />
     <ClCompile Include="music_player.cpp" />
+    <ClCompile Include="network_node.cpp" />
     <ClCompile Include="obstacle.cpp" />
     <ClCompile Include="particle.cpp" />
     <ClCompile Include="particle_node.cpp" />
@@ -207,6 +208,7 @@
     <ClInclude Include="mission_status.hpp" />
     <ClInclude Include="music_player.hpp" />
     <ClInclude Include="music_themes.hpp" />
+    <ClInclude Include="network_node.hpp" />
     <ClInclude Include="network_protocol.hpp" />
     <ClInclude Include="obstacle.hpp" />
     <ClInclude Include="popup_text.hpp" />

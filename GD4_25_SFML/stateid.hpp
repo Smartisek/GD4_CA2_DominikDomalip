@@ -10,5 +10,7 @@ enum class StateID
 	kAbout,
 	kPause,
 	kSettings,
-	kGameOver
+	kGameOver,
+	kHostGame,
+	kJoinGame
 };

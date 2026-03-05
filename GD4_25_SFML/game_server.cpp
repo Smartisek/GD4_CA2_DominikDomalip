@@ -459,5 +459,34 @@ void GameServer::CheckIfAllReady()
 
 		SendToAll(packet);
 	}
+}
+
+void GameServer::UpdateClientState()
+{
+	sf::Packet packet;
+	packet << static_cast<uint8_t>(Server::PacketType::kUpdateClientState);
+	packet << static_cast<uint8_t>(m_tank_info.size());
+
+	for (const auto& pair : m_tank_info)
+	{
+		packet << pair.first;
+		packet << pair.second.m_position.x;
+		packet << pair.second.m_position.y;
+		packet << pair.second.m_rotation;
+		packet << pair.second.m_hitpoints;
+		packet << pair.second.m_current_ammo;
+		packet << pair.second.m_missile_ammo;
+		packet << pair.second.stamina;
+	}
+	SendToAll(packet);
+}
+
+void GameServer::NotifyPlayerRealtimeChange(uint8_t tank_identifier, uint8_t action, bool action_enabled)
+{
+	m_tank_info[tank_identifier].m_real_time_actions[action] = action_enabled;
+}
+
+void GameServer::NotifyPlayerEvent(uint8_t tank_identifier, int8_t action)
+{
 
 }
