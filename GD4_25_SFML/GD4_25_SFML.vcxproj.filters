@@ -147,6 +147,9 @@
     <ClCompile Include="popup_text.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="game_server.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="utility.hpp">
@@ -342,6 +345,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="popup_type.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="network_protocol.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="game_server.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

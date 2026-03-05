@@ -145,6 +145,7 @@
     <ClCompile Include="emitter_node.cpp" />
     <ClCompile Include="entity.cpp" />
     <ClCompile Include="game_over_state.cpp" />
+    <ClCompile Include="game_server.cpp" />
     <ClCompile Include="game_state.cpp" />
     <ClCompile Include="label.cpp" />
     <ClCompile Include="level_select_state.cpp" />
@@ -196,6 +197,7 @@
     <ClInclude Include="entity.hpp" />
     <ClInclude Include="fontID.hpp" />
     <ClInclude Include="game_over_state.hpp" />
+    <ClInclude Include="game_server.hpp" />
     <ClInclude Include="game_state.hpp" />
     <ClInclude Include="label.hpp" />
     <ClInclude Include="level_select_state.hpp" />
@@ -205,6 +207,7 @@
     <ClInclude Include="mission_status.hpp" />
     <ClInclude Include="music_player.hpp" />
     <ClInclude Include="music_themes.hpp" />
+    <ClInclude Include="network_protocol.hpp" />
     <ClInclude Include="obstacle.hpp" />
     <ClInclude Include="popup_text.hpp" />
     <ClInclude Include="particle.hpp" />
