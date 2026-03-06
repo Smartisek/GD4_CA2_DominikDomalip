@@ -42,9 +42,7 @@ MenuState::MenuState(StateStack& stack, Context context) : State(stack, context)
     auto aboutButton = std::make_shared<gui::Button>(context);
     aboutButton->setPosition(sf::Vector2f(windowSize.x / 2.f - 100.f, windowSize.y / 2 + 420));
     aboutButton->SetText("About");
-    aboutButton->SetCallback([this]() 
-        {
-        RequestStackPop();
+    aboutButton->SetCallback([this]() {
         RequestStackPush(StateID::kAbout);
         });
 

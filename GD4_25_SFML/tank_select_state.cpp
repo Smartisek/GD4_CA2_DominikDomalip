@@ -3,12 +3,13 @@
 #include "button.hpp"
 #include "utility.hpp"
 
-TankSelectState::TankSelectState(StateStack& stack, Context context)
+TankSelectState::TankSelectState(StateStack& stack, Context context, bool is_host)
 	: State(stack, context)
 	, m_background_sprite(context.textures->Get(TextureID::kTitleScreen))
 	, m_gui_container()
 	, m_is_player_1_selecting(true)
 	, m_title_text(context.fonts->Get(FontID::kMain))
+	, m_is_host(is_host)
 {
 	//background setup
     sf::Vector2f viewSize = context.window->getView().getSize();

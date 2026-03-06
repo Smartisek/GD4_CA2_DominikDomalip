@@ -147,6 +147,7 @@
     <ClCompile Include="game_over_state.cpp" />
     <ClCompile Include="game_server.cpp" />
     <ClCompile Include="game_state.cpp" />
+    <ClCompile Include="key_binding.cpp" />
     <ClCompile Include="label.cpp" />
     <ClCompile Include="level_select_state.cpp" />
     <ClCompile Include="main.cpp" />
@@ -200,6 +201,7 @@
     <ClInclude Include="game_over_state.hpp" />
     <ClInclude Include="game_server.hpp" />
     <ClInclude Include="game_state.hpp" />
+    <ClInclude Include="key_binding.hpp" />
     <ClInclude Include="label.hpp" />
     <ClInclude Include="level_select_state.hpp" />
     <ClInclude Include="map_type.hpp" />
