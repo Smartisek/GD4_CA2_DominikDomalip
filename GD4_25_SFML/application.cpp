@@ -14,7 +14,16 @@
 
 
 
-Application::Application() : m_window(sf::VideoMode::getDesktopMode(), "Armored Assault", sf::Style::Close), m_current_map(MapType::kDesert), m_p1_tank_choice(TankType::kTank1), m_p2_tank_choice(TankType::kTank2), m_winner_index(0), m_stack(State::Context(m_window, m_textures, m_fonts, m_player, m_player2, m_music, m_sound, m_current_map, m_p1_tank_choice, m_p2_tank_choice, m_winner_index))
+Application::Application() 
+	: m_window(sf::VideoMode::getDesktopMode(), "Armored Assault", sf::Style::Close)
+	, m_textures()
+	, m_fonts()
+	, m_music()
+	, m_sound()
+	, m_keys1(1) // 1 means Player 1 defaults
+	, m_keys2(2) // 2 means Player 2 defaults
+	, m_multiplayer_host(false)
+	, m_stack(State::Context(m_window, m_textures, m_fonts, m_music, m_sound, m_keys1, m_keys2))
 {
 	m_window.setKeyRepeatEnabled(false);
 	m_window.setVerticalSyncEnabled(true);

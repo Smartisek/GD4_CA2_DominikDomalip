@@ -3,10 +3,8 @@ enum class ReceiverCategories
 {
 	kNone = 0,
 	kScene = 1 << 0,
-	kPlayer1Tank = 1 << 1,
-	kPlayer2Tank = 1 << 2,
-	kPlayer1Projectile = 1 << 3,
-	kPlayer2Projectile = 1 << 4,
+	kPlayerTank = 1 << 1,
+	kPlayerProjectile = 1 << 2,
 	kObstacle = 1 << 5,
 	kPickup = 1 << 6,
 	kParticleSystem = 1 << 7,

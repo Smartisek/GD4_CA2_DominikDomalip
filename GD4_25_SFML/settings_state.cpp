@@ -1,5 +1,6 @@
 #include "settings_state.hpp"
 #include "Utility.hpp"
+#include "key_binding.hpp"
 
 SettingsState::SettingsState(StateStack& stack, Context context)
     : State(stack, context)
@@ -107,18 +108,17 @@ void SettingsState::UpdateLabels()
 void SettingsState::AddButtonLabel(std::size_t index, std::size_t x, std::size_t y, const std::string& text, Context context)
 {
     const int actionCount = static_cast<int>(Action::kActionCount);
-    std::size_t index = index + (actionCount * x);
+    std::size_t ui_index = index + (actionCount * x);
     float posX = 400.f * x + 80.f;
     float posY = 60.f * y + 250.f;
 
-    m_binding_buttons[index] = std::make_shared<gui::Button>(context);
-    m_binding_buttons[index]->setPosition(sf::Vector2f(posX, posY));
-    m_binding_buttons[index]->SetText(text + (x == 0 ? " (P1)" : " (P2)"));
-    m_binding_buttons[index]->SetToggle(true);
+    m_binding_buttons[ui_index] = std::make_shared<gui::Button>(context);
+    m_binding_buttons[ui_index]->setPosition(sf::Vector2f(posX, posY));
+    m_binding_buttons[ui_index]->SetText(text + (x == 0 ? " (P1)" : " (P2)"));
+    m_binding_buttons[ui_index]->SetToggle(true);
 
-    m_binding_labels[index] = std::make_shared<gui::Label>("", *context.fonts);
-    m_binding_labels[index]->setPosition(sf::Vector2f(posX + 220.f, posY + 15.f));
+    m_binding_labels[ui_index] = std::make_shared<gui::Label>("", *context.fonts);
+    m_binding_labels[ui_index]->setPosition(sf::Vector2f(posX + 220.f, posY + 15.f));
 
-    m_gui_container.Pack(m_binding_buttons[index]);
-    m_gui_container.Pack(m_binding_labels[index]);
+
 }

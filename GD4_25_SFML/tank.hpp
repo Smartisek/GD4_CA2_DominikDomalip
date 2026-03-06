@@ -13,7 +13,7 @@ class Tank : public Entity
 {
 public:
 
-	Tank(TankType type, const TextureHolder& textures, const FontHolder& fonts, ReceiverCategories category = ReceiverCategories::kPlayer1Tank);
+	Tank(int identifier, TankType type, const TextureHolder& textures, const FontHolder& fonts);
 	
 	virtual unsigned int GetCategory() const override;
 
@@ -37,6 +37,10 @@ public:
 	int GetAmmoCount() const;
 	void CollectMissile(unsigned int amount);
 	int GetMissileAmmo() const;
+
+	//Network related
+	int GetIdentifier() const;
+	void SetIdentifier(int identifier);
 
 
 private:
@@ -83,5 +87,7 @@ private:
 
 	int m_current_ammo;
 	float m_anim_timer;
+
+	int m_identifier;
 };
 

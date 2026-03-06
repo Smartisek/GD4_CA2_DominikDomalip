@@ -1,6 +1,7 @@
 #pragma once
 #include "State.hpp"
 #include "world.hpp"
+#include "player.hpp"
 
 class GameState : public State
 {
@@ -12,8 +13,7 @@ public:
 
 private:
 	World m_world;
-	Player& m_player;
-	Player& m_player2;
+	Player m_player;
 	sf::Time m_game_over_delay; //since i got animation for tank explosion, i need a delay before going to game over state 
 	bool m_is_game_over_triggered;
 };

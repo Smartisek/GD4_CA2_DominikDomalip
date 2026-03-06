@@ -7,8 +7,7 @@
 #include "statestack.hpp"
 #include "music_player.hpp"
 #include "sound_player.hpp"
-#include "map_type.hpp"
-#include "tank_type.hpp"
+#include "key_binding.hpp"
 
 class Application
 {
@@ -24,21 +23,17 @@ private:
 
 private:
 	sf::RenderWindow m_window;
-	Player m_player{ ReceiverCategories::kPlayer1Tank };
-	Player m_player2{ ReceiverCategories::kPlayer2Tank };
 
 	TextureHolder m_textures;
 	FontHolder m_fonts;
 
-	MapType m_current_map;
 	StateStack m_stack;
 
 	MusicPlayer m_music;
 	SoundPlayer m_sound;
 
-	TankType m_p1_tank_choice;
-	TankType m_p2_tank_choice;
-
-	int m_winner_index;
+	KeyBinding m_keys1;
+	KeyBinding m_keys2;
+	bool m_multiplayer_host;
 };
 

@@ -7,13 +7,14 @@
 #include <iostream>
 #include <cmath>
 #include "sound_node.hpp"
+#include "network_node.hpp"
 
 namespace
 {
 	const std::vector<TankData> Table = InitializeTankData();
 }
 
-Tank::Tank(TankType type, const TextureHolder& textures, const FontHolder& fonts, ReceiverCategories category)
+Tank::Tank(int identifier, TankType type, const TextureHolder& textures, const FontHolder& fonts)
 	:Entity(Table[static_cast<int>(type)].m_hitpoints,
 		Table[static_cast<int>(type)].m_max_stamina,
 		Table[static_cast<int>(type)].m_drain_rate,
@@ -21,8 +22,9 @@ Tank::Tank(TankType type, const TextureHolder& textures, const FontHolder& fonts
 		Table[static_cast<int>(type)].m_sprint_multiplier
 	)
 	, m_type(type)
+	, m_identifier(identifier) //the id for tank
 	, m_sprite(textures.Get(Table[static_cast<int>(type)].m_texture))
-	, m_category(category)
+	, m_category(ReceiverCategories::kPlayerTank)
 	, m_is_firing(false)
 	, m_fire_countdown(sf::Time::Zero)
 	, m_fire_rate(1)
@@ -161,6 +163,16 @@ void Tank::UpdateCurrent(sf::Time dt, CommandQueue& commands)
 		m_explosion.Update(dt);
 		if (!m_explosion_began)
 		{
+			sf::Vector2f position = GetWorldPosition();
+
+			Command command;
+			command.category = static_cast<int>(ReceiverCategories::kNetwork);
+			command.action = DerivedAction<NetworkNode>([position](NetworkNode& node, sf::Time)
+				{
+					// This should tell multiplayer game state that tank exploded at that position
+					node.NotifyGameAction(GameActions::kTankExplode, position);
+				});
+			commands.Push(command);
 			m_explosion_began = true;
 		}
 		return;
@@ -207,26 +219,24 @@ void Tank::CreateBullet(SceneNode& node, const TextureHolder& textures) const
 	{
 		projType = ProjectileType::kMissile;
 	}
-	else if (m_category == ReceiverCategories::kPlayer1Tank)
-	{
-		projType = ProjectileType::kTank1Bullet;
-	}
 	else
 	{
-		projType = ProjectileType::kTank2Bullet;
+		switch (m_type)
+		{
+			// I currently only have two types of projectiles, later can CHANGE HERE BULLETS SPRITES
+		case TankType::kTank1: projType = ProjectileType::kTank1Bullet; break;
+		case TankType::kTank2: projType = ProjectileType::kTank2Bullet; break;
+		case TankType::kTank3: projType = ProjectileType::kTank1Bullet; break;
+		case TankType::kTank4: projType = ProjectileType::kTank2Bullet; break;
+		default: projType = ProjectileType::kTank1Bullet; break;
+		}
 	}
 
-	ReceiverCategories owner;
-	if(m_category == ReceiverCategories::kPlayer1Tank)
-	{
-		owner = ReceiverCategories::kPlayer1Projectile;
-	}
-	else
-	{
-		owner = ReceiverCategories::kPlayer2Projectile;
-	}
+	ReceiverCategories owner = ReceiverCategories::kPlayerProjectile;
+	
 
 	std::unique_ptr<Projectile> bullet(new Projectile(projType, textures, owner));
+
 	if (projType == ProjectileType::kMissile)
 	{
 		bullet->setScale(sf::Vector2f(1.2f, 1.2f));
@@ -438,4 +448,14 @@ void Tank::UpdateUI()
 		m_ammo_text.setString("x " + std::to_string(m_current_ammo));
 		m_ammo_text.setFillColor(sf::Color::Black);
 	}
+}
+
+int Tank::GetIdentifier() const
+{
+	return m_identifier;
+}
+
+void Tank::SetIdentifier(int identifier)
+{
+	m_identifier = identifier;
 }

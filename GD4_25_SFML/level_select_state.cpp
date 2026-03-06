@@ -38,7 +38,6 @@ LevelSelectState::LevelSelectState(StateStack& stack, Context context)
         // saving selection and starting game state
         button->SetCallback([this, type, context]()
             {
-                *context.currentMap = type; 
                 RequestStackPop();
                 RequestStackPush(StateID::kGame);
             });
