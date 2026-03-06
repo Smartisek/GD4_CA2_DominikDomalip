@@ -9,18 +9,15 @@ State::~State()
 {
 }
 
-State::Context::Context(sf::RenderWindow& window, TextureHolder& textures, FontHolder& fonts, Player& player, Player& player2, MusicPlayer& music, SoundPlayer& sound, MapType& currentMap, TankType& p1Tank, TankType& p2Tank, int& winnerIndex)
+State::Context::Context(sf::RenderWindow& window, TextureHolder& textures, FontHolder& fonts,
+	MusicPlayer& music, SoundPlayer& sound, KeyBinding& keys1, KeyBinding& keys2)
 	: window(&window)
 	, textures(&textures)
 	, fonts(&fonts)
-	, player(&player)
-	, player2(&player2)
 	, music(&music)
 	, sound(&sound)
-	, currentMap(&currentMap)
-	, p1Tank(&p1Tank)
-	, p2Tank(&p2Tank)
-	, winnerIndex(&winnerIndex)
+	, keys1(&keys1)
+	, keys2(&keys2)
 {
 }
 
@@ -42,4 +39,15 @@ void State::RequestStackClear()
 State::Context State::GetContext() const
 {
 	return m_context;
+}
+
+void State::OnActivate()
+{
+
+}
+
+
+void State::OnDestroy()
+{
+
 }

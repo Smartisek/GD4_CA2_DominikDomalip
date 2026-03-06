@@ -10,6 +10,7 @@
 #include "tank_type.hpp"
 
 class StateStack;
+class KeyBinding;
 
 
 class State
@@ -19,19 +20,16 @@ public:
 
 	struct Context
 	{
-		Context(sf::RenderWindow& window, TextureHolder& textures, FontHolder& fonts, Player& player, Player& player2, MusicPlayer& music, SoundPlayer& sound, MapType& currentMap, TankType& p1Tank, TankType& p2Tank, int& winnerIndex);
+		Context(sf::RenderWindow& window, TextureHolder& textures, FontHolder& fonts,
+			MusicPlayer& music, SoundPlayer& sound, KeyBinding& keys1, KeyBinding& keys2);
 		//TODO unique_ptr rather than raw pointers here?
 		sf::RenderWindow* window;
 		TextureHolder* textures;
 		FontHolder* fonts;
-		Player* player;
-		Player* player2;
 		MusicPlayer* music;
 		SoundPlayer* sound;
-		MapType* currentMap;
-		TankType* p1Tank;
-		TankType* p2Tank;
-		int* winnerIndex;
+		KeyBinding* keys1; 
+		KeyBinding* keys2;
 	};
 
 public:
@@ -40,6 +38,9 @@ public:
 	virtual void Draw() = 0;
 	virtual bool Update(sf::Time dt) = 0;
 	virtual bool HandleEvent(const sf::Event& event) = 0;
+
+	virtual void OnActivate(); // Called when a state becomes the top state
+	virtual void OnDestroy(); // Called when a state is removed from the stack and destroyed
 
 protected:
 	void RequestStackPush(StateID state_id);
