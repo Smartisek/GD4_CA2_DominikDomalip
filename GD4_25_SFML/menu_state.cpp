@@ -18,21 +18,33 @@ MenuState::MenuState(StateStack& stack, Context context) : State(stack, context)
         windowSize.y / textureSize.y
         });
 
-    // PLAY 
-    auto play_button = std::make_shared<gui::Button>(context);
-    play_button->setPosition(sf::Vector2f(windowSize.x / 2.f - 100.f, windowSize.y/2 + 370));
-    play_button->SetText("Play");
-    play_button->SetCallback([this]()
+    // HOST GAME
+    auto host_button = std::make_shared<gui::Button>(context);
+    host_button->setPosition(sf::Vector2f(windowSize.x / 2.f - 100.f, windowSize.y/2 + 320));
+    host_button->SetText("Host");
+    host_button->SetCallback([this]()
         {
             RequestStackPop();
-            RequestStackPush(StateID::kTankSelect);
+            RequestStackPush(StateID::kHostGame);
+        });
+
+    // JOIN GAME
+    auto join_button = std::make_shared<gui::Button>(context);
+    join_button->setPosition(sf::Vector2f(windowSize.x / 2.f - 100.f, windowSize.y / 2 + 370));
+    join_button->SetText("Join");
+    join_button->SetCallback([this]()
+        {
+            RequestStackPop();
+            RequestStackPush(StateID::kJoinGame);
         });
 
     // ABOUT
     auto aboutButton = std::make_shared<gui::Button>(context);
     aboutButton->setPosition(sf::Vector2f(windowSize.x / 2.f - 100.f, windowSize.y / 2 + 420));
     aboutButton->SetText("About");
-    aboutButton->SetCallback([this]() {
+    aboutButton->SetCallback([this]() 
+        {
+        RequestStackPop();
         RequestStackPush(StateID::kAbout);
         });
 
@@ -54,7 +66,8 @@ MenuState::MenuState(StateStack& stack, Context context) : State(stack, context)
             RequestStackPop();
         });
 
-    m_gui_container.Pack(play_button);
+    m_gui_container.Pack(host_button);
+	m_gui_container.Pack(join_button);
     m_gui_container.Pack(aboutButton);
     m_gui_container.Pack(settings_button);
     m_gui_container.Pack(exit_button);
