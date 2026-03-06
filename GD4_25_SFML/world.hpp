@@ -10,18 +10,23 @@
 #include "map_type.hpp"
 #include <algorithm>
 #include "popup_type.hpp"
+#include "network_node.hpp"
 
 class World
 {
 public:
-	explicit World(sf::RenderTarget& output_target, FontHolder& font, SoundPlayer& sounds, MapType mapType, TankType p1, TankType p2);
+	explicit World(sf::RenderTarget& output_target, FontHolder& font, SoundPlayer& sounds, bool networked = false);
+
 	void Update(sf::Time dt);
 	void Draw();
-
 	CommandQueue& GetCommandQueue();
 
-	bool HasPlayer1Won() const;
-	bool HasPlayer2Won() const;
+	// multiplayer related functions 
+	Tank* AddTank(uint8_t identifier, TankType type);
+	void RemoveTank(uint8_t identifier);
+	Tank* GetTank(uint8_t identifier) const;
+	bool HasAlivePlayer() const;
+	void SetCurrentMap(MapType map);
 
 private:
 	void LoadTextures();
@@ -54,18 +59,16 @@ private:
 	sf::FloatRect m_world_bounds;
 	sf::Vector2f m_spawn_position;
 
-	Tank* m_player_tank;
-	Tank* m_player2_tank;
-
 	SoundPlayer& m_sounds;
 
 	BloomEffect m_bloom_effect;
 	sf::Time m_pickup_countdown;
 	int m_active_pickups;
-
 	MapType m_current_map;
-	TankType m_p1_type;
-	TankType m_p2_type;
 	sf::Time m_win_delay;
+
+	std::vector<Tank*> m_player_tanks;
+	NetworkNode* m_network_node;
+	bool m_networked_world;
 };
 

@@ -60,23 +60,15 @@ sf::FloatRect Turret::GetBoundingRect() const
 	return GetWorldTransform().transformRect(m_sprite.getGlobalBounds());
 }
 
-void Turret::UpdateTarget(sf::Vector2f p1Pos, sf::Vector2f p2Pos)
+void Turret::UpdateTarget(sf::Vector2f targetPosition)
 {
-	float distance1 = Utility::Length(p1Pos - getPosition());
-	float distance2 = Utility::Length(p2Pos - getPosition());
-	float minDistance = std::min(distance1, distance2);
+	sf::Vector2f pos = getPosition();
+	float distance = Utility::Length(targetPosition - pos);
 
-	if (minDistance < m_range) //checking with the data table range for that turret type
+	if (distance < m_range)
 	{
 		m_has_targets = true;
-		if (distance1 < distance2)
-		{
-			m_target_pos = p1Pos;
-		}
-		else
-		{
-			m_target_pos = p2Pos;
-		}
+		m_target_pos = targetPosition;
 	}
 	else
 	{

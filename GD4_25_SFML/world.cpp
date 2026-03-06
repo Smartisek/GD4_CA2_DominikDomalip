@@ -15,7 +15,8 @@
 #include "popup_text.hpp"
 
 
-World::World(sf::RenderTarget& output_target, FontHolder& font, SoundPlayer& sounds, MapType mapType, TankType p1Type, TankType p2Type)
+
+World::World(sf::RenderTarget& output_target, FontHolder& font, SoundPlayer& sounds, bool networked)
 	: m_target(output_target) //m_window(window)
 	, m_camera(output_target.getDefaultView())
 	, m_textures()
@@ -24,19 +25,18 @@ World::World(sf::RenderTarget& output_target, FontHolder& font, SoundPlayer& sou
 	, m_scene_layers()
 	, m_world_bounds(sf::Vector2f(0.f, 0.f), sf::Vector2f(4000.f, 4000.f))
 	, m_spawn_position(m_world_bounds.size.x / 2.f, m_world_bounds.size.y / 2.f)
-	, m_player_tank(nullptr)
-	, m_player2_tank(nullptr)
 	, m_sounds(sounds)
 	, m_pickup_countdown(sf::seconds(10.f))
 	, m_active_pickups(0)
-	, m_current_map(mapType)
-	, m_p1_type(p1Type)
-	, m_p2_type(p2Type)
-	, m_win_delay(sf::Time::Zero)
+	, m_current_map(MapType::kDesert)
+	, m_network_node(nullptr)
+	, m_networked_world(networked)
 {
-	m_scene_texture.resize({ m_target.getSize().x, m_target.getSize().y }); //might not need after implementing shaders??? *** CHECK LATER***
+	m_scene_texture.resize({ m_target.getSize().x, m_target.getSize().y });
 	LoadTextures();
-	BuildScene();
+	//if its local game we can build imidiately otherwise multiplayer game state will call build scene
+	if (!m_networked_world) { BuildScene(); }
+
 	m_camera.setCenter(m_spawn_position);
 }
 
@@ -48,37 +48,64 @@ void World::Update(sf::Time dt)
 	GuideMissile();
 	UpdateSounds();
 
+	//find alive tanks and update the turret target for those
+	std::vector<sf::Vector2f> activeTankPositions;
+	for (Tank* tank : m_player_tanks)
+	{
+		if (tank && !tank->IsDestroyed())
+		{
+			activeTankPositions.push_back(tank->GetWorldPosition());
+		}
+	}
+
 	Command turretCommand;
 	turretCommand.category = static_cast<int>(ReceiverCategories::kEnemy);
-	turretCommand.action = DerivedAction<Turret>([this](Turret& turret, sf::Time)
+	turretCommand.action = DerivedAction<Turret>([activeTankPositions](Turret& turret, sf::Time)
 		{
-			// Check if tanks exist to avoid crashing
-			if (m_player_tank && m_player2_tank)
+			if (!activeTankPositions.empty())
 			{
-				turret.UpdateTarget(m_player_tank->getPosition(), m_player2_tank->getPosition());
+				sf::Vector2f turretPos = turret.GetWorldPosition();
+				sf::Vector2f closestPos = activeTankPositions[0];
+				float minDistance = std::numeric_limits<float>::max();
+
+				for (const auto& pos : activeTankPositions)
+				{
+					float distSq = std::pow(pos.x - turretPos.x, 2) + std::pow(pos.y - turretPos.y, 2);
+					if (distSq < minDistance)
+					{
+						minDistance = distSq;
+						closestPos = pos;
+					}
+					turret.UpdateTarget(closestPos);
+				}
 			}
 		});
 	m_command_queue.Push(turretCommand);
 
 
-	// 1. Process Input Commands
+	//Process Input Commands
 	while (!m_command_queue.IsEmpty())
 	{
 		m_scene_graph.OnCommand(m_command_queue.Pop(), dt);
 	}
 
 	HandleCollisions();
-	m_pickup_countdown -= dt;
-	if (m_pickup_countdown <= sf::Time::Zero && m_active_pickups < 5)
+
+	//for handling spawn pickups only do it here if it is local, otherwise server will handle this 
+	if (!m_networked_world)
 	{
-		SpawnRandomPickup();
-		//randomly choose another coundown between 5 and 10 might change this later after testing 
-		float randomSeconds = 5.0f + (std::rand() % 500) / 100.f;
-		m_pickup_countdown = sf::seconds(randomSeconds);
+		m_pickup_countdown -= dt;
+		if (m_pickup_countdown <= sf::Time::Zero && m_active_pickups < 5)
+		{
+			SpawnRandomPickup();
+			float randomSeconds = 5.0f + (std::rand() % 500) / 100.f;
+			m_pickup_countdown = sf::seconds(randomSeconds);
+		}
 	}
 
 	m_scene_graph.RemoveWrecks();
-	// 2. Update Scene Graph (Animations, Movement)
+
+	// Update Scene Graph (Animations, Movement)
 	m_scene_graph.Update(dt, m_command_queue);
 	CheckOutOfBounds();
 	UpdateView(dt);
@@ -151,10 +178,15 @@ void World::BuildScene()
 		m_scene_graph.AttachChild(std::move(layer));
 	}
 
+	//add netword node to pass events to multiplayer game state
+	std::unique_ptr<NetworkNode> network_node(new NetworkNode());
+	m_network_node = network_node.get();
+	m_scene_graph.AttachChild(std::move(network_node));
+
+	// MAP LOAD AND STREATCH HERE
 	sf::IntRect mapRect = MapTable[static_cast<int>(m_current_map)].m_texture_rect;
 	sf::Texture& texture = m_textures.Get(TextureID::kLandscape);
 	std::unique_ptr<SpriteNode> background_sprite(new SpriteNode(texture, mapRect));
-
 	// stretch the sprite to fit the battlefield
 	// We calculate how much we need to grow the map to fill the m_world_bounds still needs fix
 	float scaleX = m_world_bounds.size.x / static_cast<float>(mapRect.size.x);
@@ -182,20 +214,6 @@ void World::BuildScene()
 	sf::Vector2f player1Spawn(m_world_bounds.position.x + margin, m_world_bounds.size.y / 2.f);
 	sf::Vector2f player2Spawn(m_world_bounds.position.x + m_world_bounds.size.x - margin, m_world_bounds.size.y / 2.f);
 
-	//adding tank player 1 
-	std::unique_ptr<Tank> playerTank(new Tank(m_p1_type, m_textures, m_fonts, ReceiverCategories::kPlayer1Tank));
-	m_player_tank = playerTank.get();
-	m_player_tank->setScale(sf::Vector2f(0.5f, 0.5f));
-	m_player_tank->setPosition(player1Spawn);
-	m_scene_layers[static_cast<int>(SceneLayers::kUpperGround)]->AttachChild(std::move(playerTank));
-
-	//addding player tank 2 
-	std::unique_ptr<Tank> player2Tank(new Tank(m_p2_type, m_textures, m_fonts, ReceiverCategories::kPlayer2Tank));
-	m_player2_tank = player2Tank.get();
-	m_player2_tank->setScale(sf::Vector2f(0.5f, 0.5f));
-	m_player2_tank->setPosition(player2Spawn);
-	m_scene_layers[static_cast<int>(SceneLayers::kUpperGround)]->AttachChild(std::move(player2Tank));
-
 	//particle nodes 
 	std::unique_ptr<ParticleNode> smokeNode(new ParticleNode(ParticleType::kSmoke, m_textures));
 	m_scene_layers[static_cast<int>(SceneLayers::kLowerGround)]->AttachChild(std::move(smokeNode));
@@ -214,8 +232,8 @@ void World::DestroyEntitiesOutsideView()
 {
 	Command command;
 
-	command.category = static_cast<int>(ReceiverCategories::kPlayer1Projectile) | static_cast<int>(ReceiverCategories::kPlayer2Projectile) |
-		static_cast<int>(ReceiverCategories::kEnemyProjectile);
+	command.category = static_cast<int>(ReceiverCategories::kPlayerProjectile) | static_cast<int>(ReceiverCategories::kEnemyProjectile);
+
 	command.action = DerivedAction<Entity>([this](Entity& e, sf::Time dt)
 		{
 			//Does the object intersect with the battlefield
@@ -271,12 +289,12 @@ void World::HandleCollisions() {
 
 	for (SceneNode::Pair pair : collisionPairs)
 	{
-		// 1. player 1 hit by player 2's projectile
-		if (MatchesCategories(pair, ReceiverCategories::kPlayer1Tank, ReceiverCategories::kPlayer2Projectile))
+		// 1. tank vs player projectile
+		if (MatchesCategories(pair, ReceiverCategories::kPlayerTank, ReceiverCategories::kPlayerProjectile))
 		{
 			auto& tank = static_cast<Tank&>(*pair.first);
 			auto& bullet = static_cast<Projectile&>(*pair.second);
-
+			// server should correct this (might need to remove? will see after testing)
 			tank.Damage(bullet.GetDamage());
 			bullet.Destroy();
 
@@ -292,44 +310,18 @@ void World::HandleCollisions() {
 			else
 			{
 				tank.PlayLocalSound(m_command_queue, SoundEffect::kExplosion1);
-				std::cout << "Player 1 hit by Player 2's projectile! Tank HP: " << tank.GetHitPoints() << "\n";
 			}
 		}
-
-		// 2. player 2 hit by player 1's projectile
-		else if (MatchesCategories(pair, ReceiverCategories::kPlayer2Tank, ReceiverCategories::kPlayer1Projectile))
-		{
-			auto& tank = static_cast<Tank&>(*pair.first);
-			auto& bullet = static_cast<Projectile&>(*pair.second);
-
-			tank.Damage(bullet.GetDamage());
-			bullet.Destroy();
-
-			float damage = bullet.GetDamage();
-			CreatePopup(tank.GetWorldPosition(), PopupType::kDamage, "-" + std::to_string((int)damage));
-
-			//same as for tank 2 check if fatal bllow
-			if (tank.IsDestroyed())
-			{
-				tank.PlayLocalSound(m_command_queue, SoundEffect::kExplosionDestroy);
-			}
-			else
-			{
-				tank.PlayLocalSound(m_command_queue, SoundEffect::kExplosion1);
-				std::cout << "Player 2 hit by Player 1's projectile! Tank HP: " << tank.GetHitPoints() << "\n";
-			}
-		}
-
-		// 3. tank vs tank (body collision)
-		else if (MatchesCategories(pair, ReceiverCategories::kPlayer1Tank, ReceiverCategories::kPlayer2Tank))
+		// 2. tank vs tank (body collision)
+		else if (MatchesCategories(pair, ReceiverCategories::kPlayerTank, ReceiverCategories::kPlayerTank))
 		{
 			auto& p1 = static_cast<Tank&>(*pair.first);
 			auto& p2 = static_cast<Tank&>(*pair.second);
 
 			HandleTankCollision(p1, p2);
 		}
-
-		if (MatchesCategories(pair, ReceiverCategories::kPlayer1Tank, ReceiverCategories::kPickup))
+		// 3 tank and pickup
+		else if (MatchesCategories(pair, ReceiverCategories::kPlayerTank, ReceiverCategories::kPickup))
 		{
 			auto& tank = static_cast<Tank&>(*pair.first);
 			auto& pickup = static_cast<Pickup&>(*pair.second);
@@ -340,23 +332,10 @@ void World::HandleCollisions() {
 			CreatePopup(tank.GetWorldPosition(), pickup.GetPopupType(), pickup.GetPopupText());
 
 			tank.PlayLocalSound(m_command_queue, SoundEffect::kPickup);
-			m_active_pickups--;
+			if(!m_networked_world) m_active_pickups--;
 		}
-		else if (MatchesCategories(pair, ReceiverCategories::kPlayer2Tank, ReceiverCategories::kPickup))
-		{
-			auto& tank = static_cast<Tank&>(*pair.first);
-			auto& pickup = static_cast<Pickup&>(*pair.second);
-
-			pickup.Apply(tank);
-			pickup.Destroy();
-
-			CreatePopup(tank.GetWorldPosition(), pickup.GetPopupType(), pickup.GetPopupText());
-
-			tank.PlayLocalSound(m_command_queue, SoundEffect::kPickup);
-			m_active_pickups--;
-		}
-
-		if (MatchesCategories(pair, ReceiverCategories::kPlayer1Tank, ReceiverCategories::kObstacle) || MatchesCategories(pair, ReceiverCategories::kPlayer2Tank, ReceiverCategories::kObstacle))
+		// 4. tank and obstaccles
+		else if (MatchesCategories(pair, ReceiverCategories::kPlayerTank, ReceiverCategories::kObstacle))
 		{
 			auto& tank = static_cast<Tank&>(*pair.first);
 			auto& obstacle = static_cast<Obstacle&>(*pair.second);
@@ -373,7 +352,8 @@ void World::HandleCollisions() {
 			tank.move(diff * 5.f);
 			tank.SetVelocity(sf::Vector2f(0.f, 0.f));
 		}
-		if (MatchesCategories(pair, ReceiverCategories::kPlayer1Projectile, ReceiverCategories::kObstacle) || MatchesCategories(pair, ReceiverCategories::kPlayer2Projectile, ReceiverCategories::kObstacle))
+		// 5. player bullets and obstacles
+		else if (MatchesCategories(pair, ReceiverCategories::kPlayerProjectile, ReceiverCategories::kObstacle))
 		{
 			auto& bullet = static_cast<Projectile&>(*pair.first);
 			auto& obstacle = static_cast<Obstacle&>(*pair.second);
@@ -386,10 +366,8 @@ void World::HandleCollisions() {
 			 
 			obstacle.PlayLocalSound(m_command_queue, SoundEffect::kWall);
 		}
-
-		//turret bullet and tanks
-		if (MatchesCategories(pair, ReceiverCategories::kPlayer1Tank, ReceiverCategories::kEnemyProjectile) ||
-			MatchesCategories(pair, ReceiverCategories::kPlayer2Tank, ReceiverCategories::kEnemyProjectile))
+		//6. turret bullet and tanks
+		else if (MatchesCategories(pair, ReceiverCategories::kPlayerTank, ReceiverCategories::kEnemyProjectile))
 		{
 			auto& tank = static_cast<Tank&>(*pair.first);
 			auto& bullet = static_cast<Projectile&>(*pair.second);
@@ -402,9 +380,8 @@ void World::HandleCollisions() {
 
 			tank.PlayLocalSound(m_command_queue, SoundEffect::kExplosion1);
 		}
-		
-		if (MatchesCategories(pair, ReceiverCategories::kPlayer1Projectile, ReceiverCategories::kEnemy) ||
-			MatchesCategories(pair, ReceiverCategories::kPlayer2Projectile, ReceiverCategories::kEnemy))
+		// 7. player bullet and enemy turret
+		else if (MatchesCategories(pair, ReceiverCategories::kPlayerProjectile, ReceiverCategories::kEnemy))
 		{
 			auto& bullet = static_cast<Projectile&>(*pair.first);
 			auto& turret = static_cast<Turret&>(*pair.second);
@@ -422,8 +399,8 @@ void World::HandleCollisions() {
 				turret.PlayLocalSound(m_command_queue, SoundEffect::kExplosionDestroy);
 			}
 		}
-
-		if (MatchesCategories(pair, ReceiverCategories::kEnemyProjectile, ReceiverCategories::kObstacle))
+		// 8. enemy bullet and obstacle
+		else if (MatchesCategories(pair, ReceiverCategories::kEnemyProjectile, ReceiverCategories::kObstacle))
 		{
 			auto& bullet = static_cast<Projectile&>(*pair.first);
 			auto& obstacle = static_cast<Obstacle&>(*pair.second);
@@ -533,7 +510,7 @@ void World::ApplyFriction(sf::Time dt) {
 	// making the slow down feel and allowing me to use smoother input instead of snappy one with the 
 	// reseting velocity inside the update when we stop holding key
 	auto dampenVelocity = [frictionFactor](Tank* tank) {
-		if (tank) {
+		if (tank && !tank->IsDestroyed()) {
 			sf::Vector2f velocity = tank->GetVelocity();
 			velocity *= frictionFactor;
 
@@ -544,9 +521,11 @@ void World::ApplyFriction(sf::Time dt) {
 			tank->SetVelocity(velocity);
 		}
 		};
-
-	dampenVelocity(m_player_tank);
-	dampenVelocity(m_player2_tank);
+	// apply the friction to all player tanks
+	for (Tank* tank : m_player_tanks)
+	{
+		dampenVelocity(tank);
+	}
 
 }
 
@@ -585,15 +564,37 @@ void World::SpawnRandomPickup()
 
 void World::UpdateView(sf::Time dt)
 {
-	sf::Vector2f pos1 = m_player_tank->getPosition();
-	sf::Vector2f pos2 = m_player2_tank->getPosition();
-	//calculation for the center
-	sf::Vector2f midpoint = (pos1 + pos2) / 2.f;
-	//calculation for required size based on distance 
-	float dx = std::abs(pos1.x - pos2.x);
-	float dy = std::abs(pos1.y - pos2.y);
+	if (m_player_tanks.empty()) return;
 
-	//convert sizes to float immediately to avoid std::max error
+	// Find the outer bounds of all active players
+	float minX = std::numeric_limits<float>::max();
+	float maxX = std::numeric_limits<float>::lowest();
+	float minY = std::numeric_limits<float>::max();
+	float maxY = std::numeric_limits<float>::lowest();
+
+	int activeCount = 0;
+
+	for (Tank* tank : m_player_tanks)
+	{
+		if (tank && !tank->IsDestroyed())
+		{
+			sf::Vector2f pos = tank->getPosition();
+			minX = std::min(minX, pos.x);
+			maxX = std::max(maxX, pos.x);
+			minY = std::min(minY, pos.y);
+			maxY = std::max(maxY, pos.y);
+			activeCount++;
+		}
+	}
+
+	if (activeCount == 0) return;
+
+	// The center point between the furthest tanks
+	sf::Vector2f midpoint((minX + maxX) / 2.f, (minY + maxY) / 2.f);
+
+	float dx = std::abs(maxX - minX);
+	float dy = std::abs(maxY - minY);
+
 	float winX = static_cast<float>(m_target.getSize().x);
 	float winY = static_cast<float>(m_target.getSize().y);
 	float windowAspect = winX / winY;
@@ -663,45 +664,46 @@ void World::CheckOutOfBounds()
 			}
 		};
 
-	clampTank(m_player_tank);
-	clampTank(m_player2_tank);
-}
-
-bool World::HasPlayer1Won() const
-{
-	return m_player2_tank->IsDestroyed();
-}
-
-bool World::HasPlayer2Won() const
-{
-	return m_player_tank->IsDestroyed();
+	// Loop through all dynamic tanks
+	for (Tank* tank : m_player_tanks)
+	{
+		clampTank(tank);
+	}
 }
 
 void World::GuideMissile()
 {
 	Command guideCommand;
 	// Target all player projectiles
-	guideCommand.category = static_cast<int>(ReceiverCategories::kPlayer1Projectile) |
-		static_cast<int>(ReceiverCategories::kPlayer2Projectile);
+	guideCommand.category = static_cast<int>(ReceiverCategories::kPlayerProjectile);
+		
+
 	//lambda function expression to guide the missile towards other tank if it has missile ammo 
 	guideCommand.action = DerivedAction<Projectile>([this](Projectile& missile, sf::Time)
 		{
 			if (!missile.IsGuided()) return;
-			// if the missile belongs to player 1, target player 2 and vice versa
-			Tank* target = (missile.GetCategory() == static_cast<int>(ReceiverCategories::kPlayer1Projectile))
-				? m_player2_tank : m_player_tank;
+			
+			sf::Vector2f missilePos = missile.GetWorldPosition();
+			Tank* closestEnemy = nullptr;
+			float minDistance = 999999.f;
 
-			if (target && !target->IsDestroyed())
+			for (Tank* tank : m_player_tanks)
 			{
-				//distance calculation of the missile to the target 
-				sf::Vector2f diff = target->GetWorldPosition() - missile.GetWorldPosition();
-				float distance = std::sqrt(diff.x * diff.x + diff.y * diff.y);
-
-				// guide only over this range when we are too close
-				if (distance > 50.f)
+				if (tank && !tank->IsDestroyed())
 				{
-					missile.GuideTowards(target->GetWorldPosition());
+					sf::Vector2f diff = tank->GetWorldPosition() - missilePos;
+					float distance = std::sqrt(diff.x * diff.x + diff.y * diff.y);
+					// only consider tanks away some portion so it does not hit the player shooting
+					if (distance > 150.f && distance < minDistance)
+					{
+						minDistance = distance;
+						closestEnemy = tank;
+					}
 				}
+			}
+			if (closestEnemy)
+			{
+				missile.GuideTowards(closestEnemy->GetWorldPosition());
 			}
 		});
 
@@ -714,4 +716,63 @@ void World::CreatePopup(sf::Vector2f position, PopupType type, const std::string
 	//spawn above the entity
 	popup->setPosition(position + sf::Vector2f(0.f, -60.f));
 	m_scene_layers[static_cast<int>(SceneLayers::kUpperGround)]->AttachChild(std::move(popup));
+}
+
+bool World::HasAlivePlayer() const
+{
+	int aliveCount = 0;
+	for (Tank* tank : m_player_tanks)
+	{
+		if (tank && !tank->IsDestroyed())
+		{
+			aliveCount++;
+		}
+	}
+	//used for multiplayer to check if we should end the game
+	return aliveCount > 0;
+}
+
+Tank* World::AddTank(uint8_t identifier, TankType type)
+{
+	std::unique_ptr<Tank> player(new Tank(identifier, type, m_textures, m_fonts));
+	//this should be overwritten by the server anyway 
+	player->setPosition(m_camera.getCenter());
+	player->setScale(sf::Vector2f(0.5f, 0.5f));
+
+	// add to the array of active players 
+	m_player_tanks.emplace_back(player.get());
+	//add to the correct scene layer
+	m_scene_layers[static_cast<int>(SceneLayers::kUpperGround)]->AttachChild(std::move(player));
+
+	std::cout << "World::AddTank ID: " << +identifier << std::endl;
+
+	return m_player_tanks.back();
+}
+
+Tank* World::GetTank(uint8_t identifier) const
+{
+	for (Tank* t : m_player_tanks)
+	{
+		if (t->GetIdentifier() == identifier)
+		{
+			return t;
+		}
+	}
+	//otwherwise return null
+	return nullptr;
+}
+
+void World::RemoveTank(uint8_t identifier)
+{
+	Tank* tank = GetTank(identifier);
+	if (tank)
+	{
+		tank->Destroy();
+		m_player_tanks.erase(std::find(m_player_tanks.begin(), m_player_tanks.end(), tank));
+	}
+}
+
+void World::SetCurrentMap(MapType map)
+{
+	m_current_map = map;
 }

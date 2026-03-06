@@ -15,7 +15,7 @@ public:
 	virtual unsigned int GetCategory() const override;
 	virtual sf::FloatRect GetBoundingRect() const override;
 	void PlayLocalSound(CommandQueue& commands, SoundEffect effect);
-	void UpdateTarget(sf::Vector2f player1Pos, sf::Vector2f player2Pos);
+	void UpdateTarget(sf::Vector2f targetPosition);
 	virtual bool IsMarkedForRemoval() const override;
 private:
 	virtual void DrawCurrent(sf::RenderTarget& target, sf::RenderStates states) const override;
