@@ -356,13 +356,13 @@
     <ClInclude Include="game_server.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="world.hpp">
-      <Filter>Resource Files</Filter>
-    </ClInclude>
     <ClInclude Include="network_node.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="key_binding.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="world.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

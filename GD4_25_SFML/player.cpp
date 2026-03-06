@@ -1,99 +1,178 @@
 #include "player.hpp"
 #include "tank.hpp"
+#include "network_protocol.hpp"
+#include <SFML/Network/Packet.hpp>"
 
 struct TankMover
 {
-    TankMover(float vx, float vy) : velocityMultiplier(vx, vy) {}
+    TankMover(float vx, float vy, int identifier) 
+        : velocityMultiplier(vx, vy)
+        , tank_id(identifier)
+    {}
+    
     void operator()(Tank& tank, sf::Time dt) const
     {
-        //this should make the tank move regardless of fps
-        float speedScale = 50.0f;
-        tank.Accelerate(velocityMultiplier * tank.GetSpeed() * speedScale * dt.asSeconds());
+        if (tank.GetIdentifier() == tank_id)
+        {
+            float speedScale = 50.0f;
+            tank.Accelerate(velocityMultiplier * tank.GetSpeed() * speedScale * dt.asSeconds());
+        }
     }
 
     sf::Vector2f velocityMultiplier;
+    int tank_id;
 };
 
-Player::Player(ReceiverCategories targetCategory)
-    : m_targetCategory(targetCategory)
+struct TankFireTrigger
 {
-    m_key_binding[sf::Keyboard::Scancode::A] = Action::kMoveLeft;
-    m_key_binding[sf::Keyboard::Scancode::D] = Action::kMoveRight;
-    m_key_binding[sf::Keyboard::Scancode::W] = Action::kMoveUp;
-    m_key_binding[sf::Keyboard::Scancode::S] = Action::kMoveDown;
-    m_key_binding[sf::Keyboard::Scancode::Space] = Action::kBulletFire;
-    m_key_binding[sf::Keyboard::Scancode::LShift] = Action::kSprint;
-
-    if (m_targetCategory == ReceiverCategories::kPlayer2Tank)
+    TankFireTrigger(int identifier) : tank_id(identifier) {}
+    void operator() (Tank& tank, sf::Time) const
     {
-        m_key_binding.clear();
-        m_key_binding[sf::Keyboard::Scancode::Left] = Action::kMoveLeft;
-        m_key_binding[sf::Keyboard::Scancode::Right] = Action::kMoveRight;
-        m_key_binding[sf::Keyboard::Scancode::Up] = Action::kMoveUp;
-        m_key_binding[sf::Keyboard::Scancode::Down] = Action::kMoveDown;
-        m_key_binding[sf::Keyboard::Scancode::Enter] = Action::kBulletFire;
-		m_key_binding[sf::Keyboard::Scancode::RShift] = Action::kSprint;
+        if (tank.GetIdentifier() == tank_id)
+            tank.Fire();
     }
+    int tank_id;
+};
 
+struct TankSprintTrigger
+{
+    TankSprintTrigger(int identifier) : tank_id(identifier) {}
+    void operator() (Tank& tank, sf::Time) const
+    {
+        if (tank.GetIdentifier() == tank_id)
+            tank.Sprint();
+    }
+	int tank_id;
+};
+
+Player::Player(sf::TcpSocket* socket, uint8_t identifier, const KeyBinding* binding)
+    : m_key_binding(binding)
+    , m_identifier(identifier)
+	, m_socket(socket)
+{
     InitialiseActions();
 
     for (auto& pair : m_action_binding)
     {
-        pair.second.category = static_cast<unsigned int>(m_targetCategory);
+        pair.second.category = static_cast<unsigned int>(ReceiverCategories::kPlayerTank);
     }
 }
 
 void Player::HandleEvent(const sf::Event& event, CommandQueue& command_queue)
 {
+    // one time events check such as firing
     const auto* key_pressed = event.getIf<sf::Event::KeyPressed>();
     if (key_pressed)
     {
-        auto found = m_key_binding.find(key_pressed->scancode);
-        if (found != m_key_binding.end() && !IsRealTimeAction(found->second))
+        Action action;
+        if (m_key_binding && m_key_binding->CheckAction(key_pressed->scancode, action) && !IsRealtimeAction(action))
         {
-            command_queue.Push(m_action_binding[found->second]);
+            if (m_socket)
+            {
+                // send the change from client to server
+                sf::Packet packet;
+                packet << static_cast<uint8_t>(Client::PacketType::kPlayerEvent);
+                packet << m_identifier;
+                packet << static_cast<uint8_t>(action);
+                m_socket->send(packet);
+
+            }
+            else
+            {
+                // network disconnected so local event
+                command_queue.Push(m_action_binding[action]);
+            }
         }
+    }
+
+    // realtime keys like wasd press and release
+    struct KeyStatus
+    {
+        sf::Keyboard::Scancode code;
+        bool isPresed;
+    };
+
+    std::optional<KeyStatus> keyData;
+    if (const auto* press = event.getIf<sf::Event::KeyPressed>())
+    {
+        keyData = { press->scancode, true };
+    }
+    else if (const auto* release = event.getIf<sf::Event::KeyReleased>())
+    {
+        keyData = { release->scancode, false };
+    }
+
+    if (keyData && m_socket)
+    {
+        Action action;
+        if (m_key_binding && m_key_binding->CheckAction(keyData->code, action) && IsRealtimeAction(action))
+        {
+            //send from client to server
+            sf::Packet packet;
+            packet << static_cast<uint8_t>(Client::PacketType::kPlayerRealtimeChange);
+            packet << m_identifier;
+            packet << static_cast<uint8_t>(action);
+            packet << keyData->isPresed;
+            m_socket->send(packet);
+        }
+    }
+}
+
+bool Player::IsLocal() const
+{
+    // No key binding means this player is remote
+    return m_key_binding != nullptr;
+}
+
+void Player::DisableAllRealtimeActions(bool enable)
+{
+    for (auto& action : m_action_proxies)
+    {
+        sf::Packet packet;
+        packet << static_cast<uint8_t>(Client::PacketType::kPlayerRealtimeChange);
+        packet << m_identifier;
+        packet << static_cast<uint8_t>(action.first);
+        packet << enable;
+        m_socket->send(packet);
     }
 }
 
 void Player::HandleRealTimeInput(CommandQueue& command_queue)
 {
-    for (auto pair : m_key_binding)
+   // local realtime input
+    if ((m_socket && IsLocal()) || !m_socket)
     {
-        if (sf::Keyboard::isKeyPressed(pair.first) && IsRealTimeAction(pair.second))
+        std::vector<Action> activeActions = m_key_binding->GetRealtimeActions();
+        for (Action action : activeActions)
         {
-            command_queue.Push(m_action_binding[pair.second]);
+            command_queue.Push(m_action_binding[action]);
         }
     }
 }
 
-void Player::AssignKey(Action action, sf::Keyboard::Scancode key)
+void Player::HandleRealtimeNetworkInput(CommandQueue& commands)
 {
-    //Remove keys that are currently bound to the action
-    for (auto itr = m_key_binding.begin(); itr != m_key_binding.end();)
+    // this is oponents tanks moving on players screen
+    if (m_socket && !IsLocal())
     {
-        if (itr->second == action)
+        for (auto pair : m_action_proxies)
         {
-            m_key_binding.erase(itr++);
-        }
-        else
-        {
-            ++itr;
+            if (pair.second && IsRealtimeAction(pair.first))
+            {
+                commands.Push(m_action_binding[pair.first]);
+            }
         }
     }
-    m_key_binding[key] = action;
 }
 
-sf::Keyboard::Scancode Player::GetAssignedKey(Action action) const
+void Player::HandleNetworkEvent(Action action, CommandQueue& commnands)
 {
-    for (auto pair : m_key_binding)
-    {
-        if (pair.second == action)
-        {
-            return pair.first;
-        }
-    }
-    return sf::Keyboard::Scancode::Unknown;
+    commnands.Push(m_action_binding[action]);
+}
+
+void Player::HandleNetworkRealtimeChange(Action action, bool actionEnabled)
+{
+    m_action_proxies[action] = actionEnabled;
 }
 
 void Player::SetMissionStatus(MissionStatus status)
@@ -108,32 +187,12 @@ MissionStatus Player::GetMissionStatus() const
 
 void Player::InitialiseActions()
 {
+    // Passing in identifiers which is the id of tanks to know which to move
     const float kMoveAmount = 1.0f;
-    m_action_binding[Action::kMoveLeft].action = DerivedAction<Tank>(TankMover(-kMoveAmount, 0.f));
-    m_action_binding[Action::kMoveRight].action = DerivedAction<Tank>(TankMover(kMoveAmount, 0.f));
-    m_action_binding[Action::kMoveUp].action = DerivedAction<Tank>(TankMover(0.f, -kMoveAmount));
-    m_action_binding[Action::kMoveDown].action = DerivedAction<Tank>(TankMover(0.f, kMoveAmount));
-    m_action_binding[Action::kBulletFire].action = DerivedAction<Tank>([](Tank& t, sf::Time)
-        {
-            t.Fire();
-        });
-    m_action_binding[Action::kSprint].action = DerivedAction<Tank>([](Tank& t, sf::Time) {
-        t.Sprint();
-        });
-}
-
-bool Player::IsRealTimeAction(Action action)
-{
-    switch (action)
-    {
-    case Action::kMoveLeft:
-    case Action::kMoveRight:
-    case Action::kMoveUp:
-    case Action::kMoveDown:
-    case Action::kBulletFire:
-	case Action::kSprint:
-        return true;
-    default:
-        return false;
-    }
+    m_action_binding[Action::kMoveLeft].action = DerivedAction<Tank>(TankMover(-kMoveAmount, 0.f, m_identifier));
+    m_action_binding[Action::kMoveRight].action = DerivedAction<Tank>(TankMover(kMoveAmount, 0.f, m_identifier));
+    m_action_binding[Action::kMoveUp].action = DerivedAction<Tank>(TankMover(0.f, -kMoveAmount, m_identifier));
+    m_action_binding[Action::kMoveDown].action = DerivedAction<Tank>(TankMover(0.f, kMoveAmount, m_identifier));
+    m_action_binding[Action::kBulletFire].action = DerivedAction<Tank>(TankFireTrigger(m_identifier));
+    m_action_binding[Action::kSprint].action = DerivedAction<Tank>(TankSprintTrigger(m_identifier));
 }
