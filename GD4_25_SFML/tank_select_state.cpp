@@ -1,27 +1,67 @@
-#include "tank_select_state.hpp"
+﻿#include "tank_select_state.hpp"
 #include "data_tables.hpp"
 #include "button.hpp"
 #include "utility.hpp"
+#include <iostream>
+#include <fstream>
+#include <SFML/Network/Packet.hpp>
+#include <SFML/Network/IpAddress.hpp>
+#include <optional>
+#include <string>
+
+
+sf::IpAddress GetAddressFromFile()
+{
+    {
+        std::ifstream input_file("ip.txt");
+        std::string ip_string;
+        if (input_file >> ip_string)
+        {
+            if (auto address = sf::IpAddress::resolve(ip_string))
+            {
+                return *address;
+            }
+        }
+    }
+    //if read failed create new file with local host 
+    std::ofstream output_file("ip.txt");
+    sf::IpAddress local_address = sf::IpAddress::LocalHost;
+    output_file << local_address.toString();
+    return local_address;
+}
 
 TankSelectState::TankSelectState(StateStack& stack, Context context, bool is_host)
 	: State(stack, context)
 	, m_background_sprite(context.textures->Get(TextureID::kTitleScreen))
 	, m_gui_container()
-	, m_is_player_1_selecting(true)
 	, m_title_text(context.fonts->Get(FontID::kMain))
 	, m_is_host(is_host)
+    , m_connected(false)
+    , m_player_id(0)
+    , m_selected_map(0)
 {
+
+    //Network setup
+    if (m_is_host)
+    {
+        m_server.reset(new GameServer(sf::Vector2f(4000.f, 4000.f)));
+        m_socket.connect(sf::IpAddress::LocalHost, SERVER_PORT);
+    }
+    else
+    {
+        m_socket.connect(GetAddressFromFile(), SERVER_PORT);
+    }
+    m_socket.setBlocking(false);
 	//background setup
     sf::Vector2f viewSize = context.window->getView().getSize();
     sf::Vector2u textSize = m_background_sprite.getTexture().getSize();
     m_background_sprite.setScale(sf::Vector2f(viewSize.x / textSize.x, viewSize.y / textSize.y));
-
     m_dark_overlay.setSize(viewSize);
     m_dark_overlay.setFillColor(sf::Color(0, 0, 0, 250));
 
     //title
     m_title_text.setFont(context.fonts->Get(FontID::kMain));
-    m_title_text.setString("Player 1: Select Tank");
+    m_title_text.setString("Multiplayer Lobby");
     m_title_text.setCharacterSize(50);
     Utility::CentreOrigin(m_title_text);
     m_title_text.setPosition(sf::Vector2f(viewSize.x / 2.f + 100.f, viewSize.y / 2.f));
@@ -45,24 +85,9 @@ TankSelectState::TankSelectState(StateStack& stack, Context context, bool is_hos
         // button->setScale(0.8f, 0.8f); 
         float currentY = startY + (i * gapY);
         button->setPosition(sf::Vector2f(startX, currentY));
-
-        button->SetCallback([this, type, context]()
-            {
-                if (m_is_player_1_selecting)
-                {
-                    *context.p1Tank = type;
-                    m_is_player_1_selecting = false;
-                    UpdateLabels();
-                }
-                else
-                {
-                    *context.p2Tank = type;
-                    RequestStackPop();
-                    RequestStackPush(StateID::kLevelSelect);
-                }
-            });
-
+        button->SetCallback([this, i]() { SendTankSelection(static_cast<uint8_t>(i)); });
         m_gui_container.Pack(button);
+
         //stats logic text
         sf::Text statText(context.fonts->Get(FontID::kMain));
         statText.setCharacterSize(20);
@@ -81,17 +106,57 @@ TankSelectState::TankSelectState(StateStack& stack, Context context, bool is_hos
 
         //populate the vector texts
         m_stat_texts.push_back(statText);
+
+        auto readyBtn = std::make_shared<gui::Button>(context);
+        readyBtn->SetText("Ready Up");
+        readyBtn->setPosition(sf::Vector2f(viewSize.x - 250.f, viewSize.y - 100.f));
+        readyBtn->SetCallback([this]() { SendReadyToggle(); });
+        m_gui_container.Pack(readyBtn);
     }
 }
 
-void TankSelectState::UpdateLabels()
+void TankSelectState::SendTankSelection(uint8_t tankType)
 {
-    if (m_is_player_1_selecting)
-        m_title_text.setString("Player 1: Select Tank");
-    else
-        m_title_text.setString("Player 2: Select Tank");
+    sf::Packet packet;
+    packet << static_cast<uint8_t>(Client::PacketType::kSelectTank) << tankType;
+    m_socket.send(packet);
+}
 
-    Utility::CentreOrigin(m_title_text);
+void TankSelectState::SendReadyToggle()
+{
+    sf::Packet packet;
+    packet << static_cast<uint8_t>(Client::PacketType::kToggleReady);
+    m_socket.send(packet);
+}
+
+void TankSelectState::HandlePacket(uint8_t packetType, sf::Packet& packet)
+{
+    switch (static_cast<Server::PacketType>(packetType))
+    {
+        case Server::PacketType::kLobbyUpdate :
+        {
+            m_players.clear();
+            uint8_t mapId, playerCount;
+            packet >> mapId >> playerCount;
+            m_selected_map = mapId;
+            for (int i = 0; i < playerCount; ++i)
+            {
+                uint8_t id, type;
+                bool ready;
+                packet >> id >> type >> ready;
+                m_players[id] = { type, ready };
+            }
+            break;
+        }
+
+        case Server::PacketType::kInitialState:
+        {
+            // server will start game 
+            RequestStackPop();
+            RequestStackPush(StateID::kMultiplayerGame);
+            break;
+        }
+    }
 }
 
 void TankSelectState::Draw()
@@ -102,6 +167,21 @@ void TankSelectState::Draw()
     window.draw(m_dark_overlay);
     window.draw(m_title_text);
     window.draw(m_gui_container);
+
+    float drawY = 150.f;
+
+    for (auto const& [id, data] : m_players)
+    {
+        sf::Text info(GetContext().fonts->Get(FontID::kMain),
+            "Player " + std::to_string(id) + (data.is_ready ? " [READY]" : " [WAITING]"),
+            24);
+
+        info.setFillColor(data.is_ready ? sf::Color::Green : sf::Color::White);
+        info.setPosition({ 500.f, drawY });
+        window.draw(info);
+        drawY += 40.f;
+    }
+
     for (const auto& text : m_stat_texts)
     {
         window.draw(text);
@@ -110,6 +190,16 @@ void TankSelectState::Draw()
 
 bool TankSelectState::Update(sf::Time)
 {
+    sf::Packet packet;
+    //checking if any packets received from server
+    if (m_socket.receive(packet) == sf::Socket::Status::Done)
+    {
+        uint8_t packetType;
+        if (packet >> packetType)
+        {
+            HandlePacket(packetType, packet);
+        }
+    }
     return true;
 }
 

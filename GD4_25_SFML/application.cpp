@@ -93,13 +93,15 @@ void Application::RegisterStates()
 {
 	m_stack.RegisterState<TitleState>(StateID::kTitle);
 	m_stack.RegisterState<MenuState>(StateID::kMenu);
+	m_stack.RegisterState<TankSelectState>(StateID::kHostGame, true);
+	m_stack.RegisterState<TankSelectState>(StateID::kJoinGame, false);
 	m_stack.RegisterState<GameState>(StateID::kGame);
 	m_stack.RegisterState<AboutState>(StateID::kAbout);
 	m_stack.RegisterState<PauseState>(StateID::kPause);
 	m_stack.RegisterState<SettingsState>(StateID::kSettings);
-	m_stack.RegisterState<TankSelectState>(StateID::kTankSelect);
+	m_stack.RegisterState<TankSelectState>(StateID::kTankSelect, true);
 	m_stack.RegisterState<LevelSelectState>(StateID::kLevelSelect);
-	m_stack.RegisterState<GameOverState>(StateID::kGameOver);
+	//m_stack.RegisterState<GameOverState>(StateID::kGameOver);
 }
 
 

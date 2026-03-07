@@ -6,6 +6,7 @@ enum class StateID
 	kMenu,
 	kLevelSelect,
 	kTankSelect,
+	kMultiplayerGame,
 	kGame,
 	kAbout,
 	kPause,

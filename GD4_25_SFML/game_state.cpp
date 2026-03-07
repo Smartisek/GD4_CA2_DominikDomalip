@@ -6,10 +6,10 @@
 
 GameState::GameState(StateStack& stack, Context context) 
 	: State(stack, context)
-	, m_world(*context.window, *context.fonts, *context.sound)
+	, m_world(*context.window, *context.fonts, *context.sound, false)
 	, m_player(nullptr, 1, context.keys1)
 {
-	m_world.AddTank(1);
+	m_world.AddTank(1, TankType::kTank1);
 	context.music->Play(MusicThemes::kGameTheme);
 }
 
