@@ -23,8 +23,7 @@ GameServer::RemotePeer::RemotePeer()
 }
 
 GameServer::GameServer(sf::Vector2f battlefieldSize)
-	: m_thread(&GameServer::ExecutionThread, this)
-	, m_listening_state(false)
+	: m_listening_state(false)
 	, m_client_timeout(sf::seconds(5.f))
 	, m_max_connected_players(4)
 	, m_connected_players(0)
@@ -34,6 +33,7 @@ GameServer::GameServer(sf::Vector2f battlefieldSize)
 	, m_tank_identifier_counter(1)
 	, m_waiting_thread_end(false)
 	, m_peers(1)
+	, m_thread(&GameServer::ExecutionThread, this)
 {
 	m_listener_socket.setBlocking(false);
 	m_peers[0].reset(new RemotePeer); //reservation for server itself
@@ -242,6 +242,7 @@ void GameServer::HandleIncomingPackets()
 			{
 				HandleIncomingPackets(packet, *peer, detected_timeout);
 				peer->m_last_packet_time = Now();
+				packet.clear();
 			}
 
 			if (Now() >= peer->m_last_packet_time + m_client_timeout)
@@ -258,7 +259,10 @@ void GameServer::HandleIncomingPackets()
 void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving_peer, bool& detected_timeout)
 {
 	uint8_t packetType;
-	packet >> packetType;
+	if (!(packet >> packetType))
+	{
+		return;
+	}
 
 	switch (static_cast<Client::PacketType>(packetType))
 	{
@@ -271,6 +275,7 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
 
 		case Client::PacketType::kSelectTank:
 		{
+			if (receiving_peer.m_tank_identifiers.empty()) return;
 			uint8_t tankType;
 			packet >> tankType;
 
@@ -397,7 +402,7 @@ void GameServer::InformWorldState(sf::TcpSocket& socket)
 {
 	sf::Packet packet;
 	packet << static_cast<uint8_t>(Server::PacketType::kLobbyUpdate);
-	packet << m_selected_map;
+	packet << static_cast<uint8_t>(m_selected_map);
 	packet << static_cast<uint8_t>(m_tank_info.size());
 
 	//loop through existing playuers and send their data 

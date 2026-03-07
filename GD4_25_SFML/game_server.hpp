@@ -72,8 +72,7 @@ private:
 	void BroadcastLobbyUpdate();
 
 private:
-	// Threads & networking variables 
-	std::thread m_thread;
+	//networking variables 
 	sf::Clock m_clock;
 	sf::TcpListener m_listener_socket;
 	bool m_listening_state;
@@ -92,6 +91,7 @@ private:
 
 	std::map<uint8_t, TankInfo> m_tank_info;
 	std::vector<PeerPtr> m_peers;
+	std::thread m_thread;
 
 };
 
