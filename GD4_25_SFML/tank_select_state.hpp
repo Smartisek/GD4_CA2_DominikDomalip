@@ -46,5 +46,7 @@ private:
 
     std::map<uint8_t, PlayerLobbyData> m_players;
 	uint8_t m_selected_map;
+    const sf::Time m_keepalive_interval = sf::seconds(1.f);
+    sf::Clock m_keepalive_clock;
 };
 

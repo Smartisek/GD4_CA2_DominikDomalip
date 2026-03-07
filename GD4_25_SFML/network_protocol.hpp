@@ -34,7 +34,8 @@ namespace Client
 		kToggleReady, //when player toggles ready, this will send the ready state to the server
 		kPlayerEvent, // send server what action player made
 		kPlayerRealtimeChange, // same as above but for realtime actions, such as holding down the key to move
-		kQuit
+		kQuit,
+		kKeepAlive // dummy packet to keep us connected while in lobby , as server will disconnect us if we don't send any packets for a while, even if we are still connected and waiting for other players to get ready
 	};
 }
 

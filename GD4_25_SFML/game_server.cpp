@@ -176,26 +176,23 @@ void GameServer::HandleIncomingConnections()
 	{
 		if (m_listener_socket.accept(m_peers[m_connected_players]->m_socket) == sf::Socket::Status::Done)
 		{
-			//assign a unique ID for tank
 			uint8_t tankID = m_tank_identifier_counter++;
 
-			//initialize data for new player
 			m_tank_info[tankID].m_tank_type = static_cast<uint8_t>(TankType::kTank1);
 			m_tank_info[tankID].m_is_ready = false;
-			m_tank_info[tankID].m_position = sf::Vector2f(0.f, 0.f); //we are still in lobby
+			m_tank_info[tankID].m_position = sf::Vector2f(0.f, 0.f);
+
+			// CRITICAL LINE - MUST be here before sending packets
+			m_peers[m_connected_players]->m_tank_identifiers.push_back(tankID);
+			m_peers[m_connected_players]->m_ready = true;
+			m_peers[m_connected_players]->m_last_packet_time = Now();
 
 			sf::Packet selfPacket;
 			selfPacket << static_cast<uint8_t>(Server::PacketType::kPlayerConnect);
 			selfPacket << tankID << 0.f << 0.f;
 
-			//inform new client about existing players
 			InformWorldState(m_peers[m_connected_players]->m_socket);
-			// tell everyone that new player joined (create packet for other clients)
-			NotifyPlayerSpawn(tankID);
-
 			m_peers[m_connected_players]->m_socket.send(selfPacket);
-			m_peers[m_connected_players]->m_ready = true;
-			m_peers[m_connected_players]->m_last_packet_time = Now();
 
 			m_connected_players++;
 
@@ -207,7 +204,7 @@ void GameServer::HandleIncomingConnections()
 			{
 				SetListening(false);
 			}
-
+			BroadcastLobbyUpdate();
 			BroadcastMessage("A new challenger has entered the lobby!");
 		}
 	}
@@ -265,82 +262,90 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
 
 	switch (static_cast<Client::PacketType>(packetType))
 	{
-	case Client::PacketType::kQuit:
-	{
-		receiving_peer.m_timed_out = true;
-		detected_timeout = true;
-		break;
-	}
+		case Client::PacketType::kQuit:
+		{
+			receiving_peer.m_timed_out = true;
+			detected_timeout = true;
+			break;
+		}
 
-	case Client::PacketType::kSelectTank:
-	{
-		uint8_t tankType;
-		packet >> tankType;
+		case Client::PacketType::kSelectTank:
+		{
+			uint8_t tankType;
+			packet >> tankType;
 
-		if (tankType >= static_cast<uint8_t>(TankType::kTankCount)) tankType = 0;
+			if (tankType >= static_cast<uint8_t>(TankType::kTankCount)) tankType = 0;
 
-		uint8_t id = receiving_peer.m_tank_identifiers[0];
-		m_tank_info[id].m_tank_type = tankType;
+			uint8_t id = receiving_peer.m_tank_identifiers[0];
+			m_tank_info[id].m_tank_type = tankType;
 
-		// stat from data table
-		const TankData& stats = TankTable[tankType];
-		m_tank_info[id].m_hitpoints = stats.m_hitpoints;
-		m_tank_info[id].stamina = stats.m_max_stamina;
-		m_tank_info[id].m_current_ammo = stats.m_ammo_amount;
-		m_tank_info[id].m_missile_ammo = 0; //no one starts with missile
+			// stat from data table
+			const TankData& stats = TankTable[tankType];
+			m_tank_info[id].m_hitpoints = stats.m_hitpoints;
+			m_tank_info[id].stamina = stats.m_max_stamina;
+			m_tank_info[id].m_current_ammo = stats.m_ammo_amount;
+			m_tank_info[id].m_missile_ammo = 0; //no one starts with missile
 
-		BroadcastLobbyUpdate();
-		break;
-	}
+			BroadcastLobbyUpdate();
+			break;
+		}
 
-	case Client::PacketType::kSelectMap:
-	{
-		uint8_t mapType;
-		packet >> mapType;
-		m_selected_map = mapType;
-		BroadcastLobbyUpdate();
-		break;
-	}
+		case Client::PacketType::kSelectMap:
+		{
+			uint8_t mapType;
+			packet >> mapType;
+			m_selected_map = mapType;
+			BroadcastLobbyUpdate();
+			break;
+		}
 
-	case Client::PacketType::kToggleReady:
-	{
-		uint8_t id = receiving_peer.m_tank_identifiers[0];
-		m_tank_info[id].m_is_ready = !m_tank_info[id].m_is_ready;
+		case Client::PacketType::kToggleReady:
+		{
+			uint8_t id = receiving_peer.m_tank_identifiers[0];
+			m_tank_info[id].m_is_ready = !m_tank_info[id].m_is_ready;
 
-		BroadcastLobbyUpdate();
-		CheckIfAllReady();
-		break;
-	}
+			BroadcastLobbyUpdate();
+			CheckIfAllReady();
+			break;
+		}
 
-	case Client::PacketType::kPlayerRealtimeChange:
-	{
-		uint8_t action;
-		bool actionEnabled;
-		packet >> action >> actionEnabled;
+		case Client::PacketType::kPlayerRealtimeChange:
+		{
+			uint8_t action;
+			bool actionEnabled;
+			packet >> action >> actionEnabled;
 
-		uint8_t id = receiving_peer.m_tank_identifiers[0];
-		m_tank_info[id].m_real_time_actions[action] = actionEnabled;
-		break;
-	}
+			uint8_t id = receiving_peer.m_tank_identifiers[0];
+			m_tank_info[id].m_real_time_actions[action] = actionEnabled;
+			break;
+		}
+		case Client::PacketType::kKeepAlive:
+		{
+			// Just update the last packet time, do nothing else
+			break;
+		}
 	}
 }
 
 void GameServer::BroadcastLobbyUpdate()
 {
+	std::cout << "[SERVER] BroadcastLobbyUpdate() called. Tank count: " << m_tank_info.size() << std::endl;
 	sf::Packet packet;
 	packet << static_cast<uint8_t>(Server::PacketType::kLobbyUpdate);
-
-	packet << m_selected_map;
-
+	packet << static_cast<uint8_t>(m_selected_map);
 	packet << static_cast<uint8_t>(m_tank_info.size());
 
 	for (const auto& pair : m_tank_info)
 	{
-		packet << pair.first;
-		packet << pair.second.m_tank_type;
-		packet << pair.second.m_is_ready;
-	}
+		std::cout << "  - Tank ID: " << static_cast<int>(pair.first)
+			<< ", Type: " << static_cast<int>(pair.second.m_tank_type)
+			<< ", Ready: " << (pair.second.m_is_ready ? "Yes" : "No") << std::endl;
 
+		packet << static_cast<uint8_t>(pair.first); // Force ID to 1 byte
+		packet << static_cast<uint8_t>(pair.second.m_tank_type);
+		packet << pair.second.m_is_ready; // Booleans are safe
+	}
+	std::cout << "[SERVER] BroadcastLobbyUpdate sent to all ready peers" << std::endl;
 	SendToAll(packet);
 }
 
@@ -392,16 +397,14 @@ void GameServer::InformWorldState(sf::TcpSocket& socket)
 {
 	sf::Packet packet;
 	packet << static_cast<uint8_t>(Server::PacketType::kLobbyUpdate);
-
 	packet << m_selected_map;
-
 	packet << static_cast<uint8_t>(m_tank_info.size());
 
 	//loop through existing playuers and send their data 
 	for (const auto& pair : m_tank_info)
 	{
-		packet << pair.first;
-		packet << pair.second.m_tank_type;
+		packet << static_cast<uint8_t>(pair.first);
+		packet << static_cast<uint8_t>(pair.second.m_tank_type);
 		packet << pair.second.m_is_ready;
 	}
 

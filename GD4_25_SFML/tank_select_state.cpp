@@ -133,11 +133,52 @@ void TankSelectState::HandlePacket(uint8_t packetType, sf::Packet& packet)
 {
     switch (static_cast<Server::PacketType>(packetType))
     {
+        case Server::PacketType::kPlayerConnect:
+        {
+            uint8_t playerId;
+            float posX, posY;
+            if (packet >> playerId >> posX >> posY)
+            {
+                std::cout << "[CLIENT] kPlayerConnect received. Player ID: " << static_cast<int>(playerId) << std::endl;
+
+                // Store own player ID when first connecting
+                if (m_player_id == 0)
+                {
+                    m_player_id = playerId;
+                    m_connected = true;
+                    std::cout << "[CLIENT] Set own ID to: " << static_cast<int>(playerId) << std::endl;
+                }
+
+                // Add/update player in lobby list
+                if (m_players.find(playerId) == m_players.end())
+                {
+                    m_players[playerId] = { 0, false };
+                    std::cout << "[CLIENT] Added new player. Total: " << m_players.size() << std::endl;
+                }
+            }
+            break;
+        }
+
+        case Server::PacketType::kPlayerDisconnect:
+        {
+            uint8_t playerId;
+            if (packet >> playerId)
+            {
+                std::cout << "[CLIENT] kPlayerDisconnect received. Player ID: " << static_cast<int>(playerId) << std::endl;
+                m_players.erase(playerId);
+            }
+            break;
+        }
+
         case Server::PacketType::kLobbyUpdate :
         {
-            m_players.clear();
             uint8_t mapId, playerCount;
-            packet >> mapId >> playerCount;
+            if (!(packet >> mapId >> playerCount))
+            {
+                std::cout << "[CLIENT] Failed to read kLobbyUpdate header" << std::endl;
+                break;
+            }
+
             m_selected_map = mapId;
             for (int i = 0; i < playerCount; ++i)
             {
@@ -152,8 +193,15 @@ void TankSelectState::HandlePacket(uint8_t packetType, sf::Packet& packet)
         case Server::PacketType::kInitialState:
         {
             // server will start game 
+            std::cout << "[CLIENT] kInitialState received. Starting game." << std::endl;
             RequestStackPop();
             RequestStackPush(StateID::kMultiplayerGame);
+            break;
+        }
+
+        default:
+        {
+            std::cout << "[CLIENT] Unhandled packet type: " << static_cast<int>(packetType) << std::endl;
             break;
         }
     }
@@ -190,16 +238,40 @@ void TankSelectState::Draw()
 
 bool TankSelectState::Update(sf::Time)
 {
-    sf::Packet packet;
-    //checking if any packets received from server
-    if (m_socket.receive(packet) == sf::Socket::Status::Done)
+    int packetCount = 0;
+
+    if (m_keepalive_clock.getElapsedTime() >= m_keepalive_interval)
     {
+        sf::Packet keepalive;
+        keepalive << static_cast<uint8_t>(Client::PacketType::kKeepAlive);
+        m_socket.send(keepalive);
+        m_keepalive_clock.restart();
+    }
+
+    sf::Packet packet;
+    while (m_socket.receive(packet) == sf::Socket::Status::Done)
+    {
+        packetCount++;
         uint8_t packetType;
         if (packet >> packetType)
         {
+            std::cout << "[CLIENT] Received packet type: " << static_cast<int>(packetType)
+                << " (kLobbyUpdate=1, kInitialState=2)" << std::endl;
             HandlePacket(packetType, packet);
         }
+        else
+        {
+            std::cout << "[CLIENT] Failed to extract packet type" << std::endl;
+        }
+        packet.clear();
     }
+
+    if (packetCount > 0)
+    {
+        std::cout << "[CLIENT] Total packets this frame: " << packetCount
+            << ", m_players.size()=" << m_players.size() << std::endl;
+    }
+
     return true;
 }
 
