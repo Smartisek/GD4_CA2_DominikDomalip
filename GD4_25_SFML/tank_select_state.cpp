@@ -106,13 +106,12 @@ TankSelectState::TankSelectState(StateStack& stack, Context context, bool is_hos
 
         //populate the vector texts
         m_stat_texts.push_back(statText);
-
-        auto readyBtn = std::make_shared<gui::Button>(context);
-        readyBtn->SetText("Ready Up");
-        readyBtn->setPosition(sf::Vector2f(viewSize.x - 250.f, viewSize.y - 100.f));
-        readyBtn->SetCallback([this]() { SendReadyToggle(); });
-        m_gui_container.Pack(readyBtn);
     }
+    auto readyBtn = std::make_shared<gui::Button>(context);
+    readyBtn->SetText("Ready Up");
+    readyBtn->setPosition(sf::Vector2f(viewSize.x - 250.f, viewSize.y - 100.f));
+    readyBtn->SetCallback([this]() { SendReadyToggle(); });
+    m_gui_container.Pack(readyBtn);
 }
 
 void TankSelectState::SendTankSelection(uint8_t tankType)
@@ -193,9 +192,9 @@ void TankSelectState::HandlePacket(uint8_t packetType, sf::Packet& packet)
         case Server::PacketType::kInitialState:
         {
             // server will start game 
-            std::cout << "[CLIENT] kInitialState received. Starting game." << std::endl;
+            std::cout << "[CLIENT] kInitialState received. Going to map selection." << std::endl;
             RequestStackPop();
-            RequestStackPush(StateID::kMultiplayerGame);
+            RequestStackPush(StateID::kLevelSelect);
             break;
         }
 
