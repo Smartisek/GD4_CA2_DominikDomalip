@@ -8,6 +8,7 @@
 #include <SFML/System/Sleep.hpp>
 #include "pickup_type.hpp"
 #include <iostream>
+#include "map_type.hpp"
 
 namespace
 {
@@ -176,13 +177,14 @@ void GameServer::HandleIncomingConnections()
 	{
 		if (m_listener_socket.accept(m_peers[m_connected_players]->m_socket) == sf::Socket::Status::Done)
 		{
+
 			uint8_t tankID = m_tank_identifier_counter++;
 
 			m_tank_info[tankID].m_tank_type = static_cast<uint8_t>(TankType::kTank1);
 			m_tank_info[tankID].m_is_ready = false;
 			m_tank_info[tankID].m_position = sf::Vector2f(0.f, 0.f);
-
-			// CRITICAL LINE - MUST be here before sending packets
+			m_tank_info[tankID].m_map_vote = 255; // not voted yet
+			//setting the tank id for new connections to receive and update
 			m_peers[m_connected_players]->m_tank_identifiers.push_back(tankID);
 			m_peers[m_connected_players]->m_ready = true;
 			m_peers[m_connected_players]->m_last_packet_time = Now();
@@ -299,8 +301,14 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
 		{
 			uint8_t mapType;
 			packet >> mapType;
-			m_selected_map = mapType;
-			BroadcastLobbyUpdate();
+
+			if (receiving_peer.m_tank_identifiers.empty()) return;
+			uint8_t id = receiving_peer.m_tank_identifiers[0];
+			
+			//strore players vote
+			m_tank_info[id].m_map_vote = mapType;
+			std::cout << "[SERVER] Player " << (int)id << " voted for map " << (int)mapType << std::endl;
+			//BroadcastLobbyUpdate();
 			break;
 		}
 
@@ -432,40 +440,7 @@ void GameServer::CheckIfAllReady()
 	
 	if (allReady)
 	{
-		m_game_started = true;
-		SetListening(false); //locking the lobb	
-
-		sf::Packet packet;
-		packet << static_cast<uint8_t>(Server::PacketType::kInitialState);
-		packet << m_selected_map;
-		packet << static_cast<uint8_t>(m_tank_info.size());
-
-		//spawn in circle around center
-		sf::Vector2 center = m_battlefield_size / 2.f;
-		float radius = 400.f;
-		float angleStep = 360.f / m_tank_info.size();
-		int playerIndex = 0;
-
-		for (auto& pair : m_tank_info)
-		{
-			float radians = Utility::toRadians(angleStep * playerIndex);
-
-			//position
-			pair.second.m_position.x = center.x + std::cos(radians) * radius;
-			pair.second.m_position.y = center.y + std::sin(radians) * radius;
-
-			//rotation
-			pair.second.m_rotation = Utility::toRadians(std::atan2(center.y - pair.second.m_position.y, center.x - pair.second.m_position.x)) + 90.f;
-
-			packet << pair.first;
-			packet << pair.second.m_tank_type;
-			packet << pair.second.m_position.x;
-			packet << pair.second.m_position.y;
-
-			playerIndex++;
-		}
-
-		SendToAll(packet);
+		CheckIfMapVotingDone();
 	}
 }
 
@@ -497,4 +472,80 @@ void GameServer::NotifyPlayerRealtimeChange(uint8_t tank_identifier, uint8_t act
 void GameServer::NotifyPlayerEvent(uint8_t tank_identifier, int8_t action)
 {
 
+}
+
+void GameServer::CheckIfMapVotingDone()
+{
+	std::map<uint8_t, int> votePlayer;
+	int totalVotes = 0;
+
+	for (auto const& [id, info] : m_tank_info)
+	{
+		if (info.m_map_vote != 255)
+		{
+			votePlayer[info.m_map_vote]++;
+			totalVotes++;
+		}
+	}
+
+	if (totalVotes != m_connected_players)
+	{
+		return; 
+	}
+
+	// choose the map based on votes
+	uint8_t finalMap = 0;
+	if (totalVotes > 0)
+	{
+		int maxVotes = 0;
+		std::vector<uint8_t> winners;
+
+		for (auto const& [mapId, count] : votePlayer)
+		{
+			if (count > maxVotes) { maxVotes = count; winners = { mapId }; }
+			else if (count == maxVotes) { winners.push_back(mapId); }
+		}
+		finalMap = winners[std::rand() % winners.size()];
+	}
+	else
+	{
+		//having a default map if no one votes and just presses ready 
+		finalMap = std::rand() % static_cast<int>(MapType::kTypeCount);
+	}
+
+	m_selected_map = finalMap;
+	m_game_started = true; // physic thread Tick() start processing 
+	SetListening(false);   //nnot listening for new connections 
+
+	std::cout << "[SERVER] Match starting on Map: " << (int)finalMap << std::endl;
+
+	// start game packet 
+	sf::Packet packet;
+	packet << static_cast<uint8_t>(Server::PacketType::kInitialState);
+	packet << m_selected_map;
+	packet << static_cast<uint8_t>(m_tank_info.size());
+
+	// Calculate spawn positions in a circle
+	sf::Vector2f center = m_battlefield_size / 2.f;
+	float radius = 400.f;
+	float angleStep = 360.f / m_tank_info.size();
+	int playerIndex = 0;
+
+	for (auto& pair : m_tank_info)
+	{
+		float radians = Utility::toRadians(angleStep * playerIndex);
+		pair.second.m_position.x = center.x + std::cos(radians) * radius;
+		pair.second.m_position.y = center.y + std::sin(radians) * radius;
+
+		// Authoritative rotation: make everyone face the center
+		pair.second.m_rotation = Utility::ToDegrees(std::atan2(center.y - pair.second.m_position.y, center.x - pair.second.m_position.x)) + 90.f;
+
+		packet << pair.first;
+		packet << pair.second.m_tank_type;
+		packet << pair.second.m_position.x;
+		packet << pair.second.m_position.y;
+		playerIndex++;
+	}
+
+	SendToAll(packet);
 }

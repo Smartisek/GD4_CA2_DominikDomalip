@@ -24,12 +24,14 @@ private:
     void HandlePacket(uint8_t packetType, sf::Packet& packet);
     void SendTankSelection(uint8_t tankType);
     void SendReadyToggle();
+    void SendMapSelection(uint8_t mapType);
 
 private:
     sf::Sprite m_background_sprite;
     sf::RectangleShape m_dark_overlay;
     gui::Container m_gui_container;
     sf::Text m_title_text;
+	sf::Text m_instruction_text;
     std::vector<sf::Text> m_stat_texts;
 
     std::unique_ptr<GameServer> m_server;

@@ -52,5 +52,6 @@ protected:
 private:
 	StateStack* m_stack;
 	Context m_context;
+	sf::TcpSocket* socket;
 };
 

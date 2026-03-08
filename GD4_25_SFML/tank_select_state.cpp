@@ -8,6 +8,7 @@
 #include <SFML/Network/IpAddress.hpp>
 #include <optional>
 #include <string>
+#include "map_type.hpp"
 
 
 sf::IpAddress GetAddressFromFile()
@@ -39,6 +40,7 @@ TankSelectState::TankSelectState(StateStack& stack, Context context, bool is_hos
     , m_connected(false)
     , m_player_id(0)
     , m_selected_map(0)
+	, m_instruction_text(context.fonts->Get(FontID::kMain))
 {
 
     //Network setup
@@ -59,18 +61,25 @@ TankSelectState::TankSelectState(StateStack& stack, Context context, bool is_hos
     m_dark_overlay.setSize(viewSize);
     m_dark_overlay.setFillColor(sf::Color(0, 0, 0, 250));
 
+    //instructions 
+	m_instruction_text.setFont(context.fonts->Get(FontID::kMain));
+	m_instruction_text.setString("Select your tank and map!" + std::string("\n") + "Press Ready when done!" + std::string("\n") + "Map will be chosen based on votes.");
+	m_instruction_text.setCharacterSize(20);
+	Utility::CentreOrigin(m_instruction_text);
+	m_instruction_text.setPosition(sf::Vector2f(viewSize.x / 2.f - 70.f, viewSize.y - 1000.f));
+
     //title
     m_title_text.setFont(context.fonts->Get(FontID::kMain));
     m_title_text.setString("Multiplayer Lobby");
     m_title_text.setCharacterSize(50);
     Utility::CentreOrigin(m_title_text);
-    m_title_text.setPosition(sf::Vector2f(viewSize.x / 2.f + 100.f, viewSize.y / 2.f));
+    m_title_text.setPosition(sf::Vector2f(viewSize.x / 2.f - 70.f, viewSize.y - 850.f));
     
     //for getting the data 
     const std::vector<TankData> tankData = InitializeTankData();
 
     // Define layout variables
-    float startX = viewSize.x * 0.25f; 
+    float startX = viewSize.x * 0.15f; 
     float startY = 150.f;   
     float gapY = 280.f;                
 
@@ -107,9 +116,30 @@ TankSelectState::TankSelectState(StateStack& stack, Context context, bool is_hos
         //populate the vector texts
         m_stat_texts.push_back(statText);
     }
+
+    // Map setup
+    const std::vector<MapData> mapData = InitializeMapData();
+    float mapX = viewSize.x * 0.65f;
+    float mapY = 100.f;
+
+    for (int i = 0; i < static_cast<int>(MapType::kTypeCount); ++i)
+    {
+        auto button = std::make_shared<gui::Button>(context);
+        button->SetCustomIcon(context.textures->Get(TextureID::kLandscape), mapData[i].m_theme_icon);
+        button->setPosition(sf::Vector2f(mapX, mapY));
+        button->setScale({ 6.f, 6.f }); 
+        button->SetCallback([this, i]()
+            {
+                SendMapSelection(static_cast<uint8_t>(i));
+                std::cout << "[CLIENT] Voted for map " << i << std::endl;
+            });
+        m_gui_container.Pack(button);
+        mapY += 150.f; 
+    }
+
     auto readyBtn = std::make_shared<gui::Button>(context);
     readyBtn->SetText("Ready Up");
-    readyBtn->setPosition(sf::Vector2f(viewSize.x - 250.f, viewSize.y - 100.f));
+    readyBtn->setPosition(sf::Vector2f(viewSize.x / 2.f - 100.f, viewSize.y - 150.f));
     readyBtn->SetCallback([this]() { SendReadyToggle(); });
     m_gui_container.Pack(readyBtn);
 }
@@ -191,10 +221,14 @@ void TankSelectState::HandlePacket(uint8_t packetType, sf::Packet& packet)
 
         case Server::PacketType::kInitialState:
         {
-            // server will start game 
-            std::cout << "[CLIENT] kInitialState received. Going to map selection." << std::endl;
-            RequestStackPop();
-            RequestStackPush(StateID::kLevelSelect);
+            uint8_t winningMap;
+            packet >> winningMap; // read map chosen byt the server 
+
+            std::cout << "[CLIENT] Match starting on map " << (int)winningMap << "!" << std::endl;
+
+            
+            RequestStackClear();
+            RequestStackPush(StateID::kTitle);
             break;
         }
 
@@ -209,10 +243,12 @@ void TankSelectState::HandlePacket(uint8_t packetType, sf::Packet& packet)
 void TankSelectState::Draw()
 {
     sf::RenderWindow& window = *GetContext().window;
+	sf::Vector2f viewSize = window.getView().getSize();
     window.setView(window.getDefaultView());
     window.draw(m_background_sprite);
     window.draw(m_dark_overlay);
     window.draw(m_title_text);
+	window.draw(m_instruction_text);
     window.draw(m_gui_container);
 
     float drawY = 150.f;
@@ -224,7 +260,7 @@ void TankSelectState::Draw()
             24);
 
         info.setFillColor(data.is_ready ? sf::Color::Green : sf::Color::White);
-        info.setPosition({ 500.f, drawY });
+        info.setPosition(sf::Vector2f(viewSize.x / 2.f - 180.f, viewSize.y - 950.f + drawY));
         window.draw(info);
         drawY += 40.f;
     }
@@ -278,4 +314,11 @@ bool TankSelectState::HandleEvent(const sf::Event& event)
 {
     m_gui_container.HandleEvent(event);
     return false;
+}
+
+void TankSelectState::SendMapSelection(uint8_t mapType)
+{
+    sf::Packet packet;
+    packet << static_cast<uint8_t>(Client::PacketType::kSelectMap) << mapType;
+    m_socket.send(packet);
 }

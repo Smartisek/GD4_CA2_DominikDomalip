@@ -1,13 +1,16 @@
 #include "level_select_state.hpp"
-
+#include <SFML/Network/Packet.hpp>
+#include "network_protocol.hpp"
 #include "utility.hpp"
 #include "data_tables.hpp"
 #include "button.hpp"
+#include <iostream>
 
-LevelSelectState::LevelSelectState(StateStack& stack, Context context)
+LevelSelectState::LevelSelectState(StateStack& stack, Context context, bool isHost)
 	: State(stack, context)
 	, m_gui_container()
 	, m_background_sprite(context.textures->Get(TextureID::kTitleScreen))
+    , m_is_host(isHost)
 
 {
 	sf::Vector2f viewSize = context.window->getView().getSize();
@@ -38,24 +41,15 @@ LevelSelectState::LevelSelectState(StateStack& stack, Context context)
         // saving selection and starting game state
         button->SetCallback([this, type, context]()
             {
-                RequestStackPop();
-                RequestStackPush(StateID::kGame);
+                SendMapSelection(static_cast<uint8_t>(type));
+                m_gui_container.Deactivate();
+                std::cout << "[CLIENT] Vote sent. Waiting for results..." << std::endl;
             });
 
         m_gui_container.Pack(button);
         //button y spacing 
         startY += 150.f; 
     }
-
-    //back button into the settinhs 
-    auto backButton = std::make_shared<gui::Button>(context);
-    backButton->setPosition(sf::Vector2f(viewSize.x / 2.f - 100.f, startY ));
-    backButton->SetText("Back");
-    backButton->SetCallback([this]() {
-        RequestStackPop();
-        RequestStackPush(StateID::kMenu);
-        });
-    m_gui_container.Pack(backButton);
 }
 
 void LevelSelectState::Draw()
@@ -70,7 +64,31 @@ void LevelSelectState::Draw()
 
 bool LevelSelectState::Update(sf::Time)
 {
-    return true;
+    if (m_socket)
+    {
+        sf::Packet packet;
+
+        while (m_socket->receive(packet) == sf::Socket::Status::Done)
+        {
+            uint8_t packetType;
+            if (packet >> packetType && packetType == static_cast<uint8_t>(Server::PacketType::kInitialState))
+            {
+                //read the winning map from packet 
+                uint8_t winningMap;
+                packet >> winningMap;
+                //255 wont be the real id so do not go next until have it 
+                if (winningMap != 255)
+                {
+                    std::cout << "[CLIENT] Voting Finished! Winning Map: " << (int)winningMap << std::endl;
+
+                    RequestStackClear();
+                    RequestStackPush(StateID::kMultiplayerGame);
+                    return false;
+                }
+            }
+        }
+    }
+    return false;
 }
 
 bool LevelSelectState::HandleEvent(const sf::Event& event)
@@ -78,4 +96,15 @@ bool LevelSelectState::HandleEvent(const sf::Event& event)
     m_gui_container.HandleEvent(event);
 
     return false;
+}
+
+void LevelSelectState::SendMapSelection(uint8_t mapType)
+{
+    if (m_socket)
+    {
+        sf::Packet packet;
+        packet << static_cast<uint8_t>(Client::PacketType::kSelectMap) << mapType;
+        m_socket->send(packet);
+        //not changing states here anmd wait for the server to send kInitialState back to everyone
+    }
 }

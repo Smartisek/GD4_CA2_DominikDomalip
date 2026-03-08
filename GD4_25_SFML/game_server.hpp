@@ -45,6 +45,7 @@ private:
 		uint8_t m_missile_ammo;
 		float stamina;
 		std::map<uint8_t, bool> m_real_time_actions;
+		uint8_t m_map_vote;
 	};
 
 	typedef std::unique_ptr<RemotePeer> PeerPtr;
@@ -70,6 +71,7 @@ private:
 	// Logic for lobby tank and map selection
 	void CheckIfAllReady();
 	void BroadcastLobbyUpdate();
+	void CheckIfMapVotingDone();
 
 private:
 	//networking variables 

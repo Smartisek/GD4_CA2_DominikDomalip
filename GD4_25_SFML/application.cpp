@@ -100,7 +100,8 @@ void Application::RegisterStates()
 	m_stack.RegisterState<PauseState>(StateID::kPause);
 	m_stack.RegisterState<SettingsState>(StateID::kSettings);
 	m_stack.RegisterState<TankSelectState>(StateID::kTankSelect, true);
-	m_stack.RegisterState<LevelSelectState>(StateID::kLevelSelect);
+	m_stack.RegisterState<LevelSelectState>(StateID::kLevelSelect, true);
+
 	//m_stack.RegisterState<GameOverState>(StateID::kGameOver);
 }
 
