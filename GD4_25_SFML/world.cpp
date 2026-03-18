@@ -776,3 +776,8 @@ void World::SetCurrentMap(MapType map)
 {
 	m_current_map = map;
 }
+
+bool World::PollGameAction(GameActions::Action& out)
+{
+	return m_network_node->PollGameAction(out);
+}

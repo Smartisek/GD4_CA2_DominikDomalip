@@ -12,6 +12,7 @@ namespace Server
 	{
 		kBroadcastMessage, //string message sent to all clients, can be shown on their screen
 		kLobbyUpdate, //Server will tell clients who is in the lobby, their IDs and names, and if the game is starting
+		kStartGame, //this will tell client to start the game and take the map type and the initial positions of tanks, so clients can create the map and tanks before the game starts
 		kInitialState, //this will tell client map type, number of tanks (players), their IDs and positions
 		kPlayerEvent, //when player makes an action, this takes sf::Int32 variables, tank ID and action ID from the action.hpp
 		kPlayerRealtimeChange, //same as above but for realtime actions, such as holding down the key to move, instead of just pressing it once
@@ -33,6 +34,8 @@ namespace Client
 		kSelectMap, //when player selects a map, this will send the map type to the server
 		kToggleReady, //when player toggles ready, this will send the ready state to the server
 		kPlayerEvent, // send server what action player made
+		kStateUpdate, // this will be sent to server every frame, it will contain the position and rotation of the player's tank and turret, so the server can update the game state and send it to other clients, takes sf::Int32 for player ID, position and rotation
+		kGameEvent, // player killed etc
 		kPlayerRealtimeChange, // same as above but for realtime actions, such as holding down the key to move
 		kQuit,
 		kKeepAlive // dummy packet to keep us connected while in lobby , as server will disconnect us if we don't send any packets for a while, even if we are still connected and waiting for other players to get ready

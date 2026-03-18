@@ -46,14 +46,14 @@ TankSelectState::TankSelectState(StateStack& stack, Context context, bool is_hos
     //Network setup
     if (m_is_host)
     {
-        m_server.reset(new GameServer(sf::Vector2f(4000.f, 4000.f)));
-        m_socket.connect(sf::IpAddress::LocalHost, SERVER_PORT);
+        GetContext().server->reset(new GameServer(sf::Vector2f(4000.f, 4000.f)));
+        GetContext().socket->connect(sf::IpAddress::LocalHost, SERVER_PORT);
     }
     else
     {
-        m_socket.connect(GetAddressFromFile(), SERVER_PORT);
+        GetContext().socket->connect(GetAddressFromFile(), SERVER_PORT);
     }
-    m_socket.setBlocking(false);
+    GetContext().socket->setBlocking(false);
 	//background setup
     sf::Vector2f viewSize = context.window->getView().getSize();
     sf::Vector2u textSize = m_background_sprite.getTexture().getSize();
@@ -148,14 +148,14 @@ void TankSelectState::SendTankSelection(uint8_t tankType)
 {
     sf::Packet packet;
     packet << static_cast<uint8_t>(Client::PacketType::kSelectTank) << tankType;
-    m_socket.send(packet);
+    GetContext().socket->send(packet);
 }
 
 void TankSelectState::SendReadyToggle()
 {
     sf::Packet packet;
     packet << static_cast<uint8_t>(Client::PacketType::kToggleReady);
-    m_socket.send(packet);
+    GetContext().socket->send(packet);
 }
 
 void TankSelectState::HandlePacket(uint8_t packetType, sf::Packet& packet)
@@ -227,8 +227,13 @@ void TankSelectState::HandlePacket(uint8_t packetType, sf::Packet& packet)
             std::cout << "[CLIENT] Match starting on map " << (int)winningMap << "!" << std::endl;
 
             
-            RequestStackClear();
-            RequestStackPush(StateID::kTitle);
+            RequestStackPop();
+            if (m_is_host) {
+                RequestStackPush(StateID::kMultiplayerHost);
+            }
+            else {
+                RequestStackPush(StateID::kMultiplayerJoin);
+            }
             break;
         }
 
@@ -279,12 +284,12 @@ bool TankSelectState::Update(sf::Time)
     {
         sf::Packet keepalive;
         keepalive << static_cast<uint8_t>(Client::PacketType::kKeepAlive);
-        m_socket.send(keepalive);
+        GetContext().socket->send(keepalive);
         m_keepalive_clock.restart();
     }
 
     sf::Packet packet;
-    while (m_socket.receive(packet) == sf::Socket::Status::Done)
+    while (GetContext().socket->receive(packet) == sf::Socket::Status::Done)
     {
         packetCount++;
         uint8_t packetType;
@@ -320,5 +325,5 @@ void TankSelectState::SendMapSelection(uint8_t mapType)
 {
     sf::Packet packet;
     packet << static_cast<uint8_t>(Client::PacketType::kSelectMap) << mapType;
-    m_socket.send(packet);
+    GetContext().socket->send(packet);
 }

@@ -8,6 +8,8 @@
 #include "music_player.hpp"
 #include "sound_player.hpp"
 #include "key_binding.hpp"
+#include "game_server.hpp"
+#include <SFML/Network/TcpSocket.hpp>
 
 class Application
 {
@@ -28,6 +30,9 @@ private:
 	FontHolder m_fonts;
 
 	StateStack m_stack;
+	sf::TcpSocket m_socket;
+	std::unique_ptr<GameServer> m_server;
+	uint8_t m_local_id;
 
 	MusicPlayer m_music;
 	SoundPlayer m_sound;

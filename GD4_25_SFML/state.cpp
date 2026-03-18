@@ -1,5 +1,6 @@
 #include "state.hpp"
 #include "statestack.hpp"
+#include <SFML/Network/TcpSocket.hpp>
 
 State::State(StateStack& stack, Context context) : m_stack(&stack), m_context(context)
 {
@@ -10,7 +11,7 @@ State::~State()
 }
 
 State::Context::Context(sf::RenderWindow& window, TextureHolder& textures, FontHolder& fonts,
-	MusicPlayer& music, SoundPlayer& sound, KeyBinding& keys1, KeyBinding& keys2)
+	MusicPlayer& music, SoundPlayer& sound, KeyBinding& keys1, KeyBinding& keys2, sf::TcpSocket& socket, std::unique_ptr<GameServer>& server, uint8_t& localID)
 	: window(&window)
 	, textures(&textures)
 	, fonts(&fonts)
@@ -18,6 +19,9 @@ State::Context::Context(sf::RenderWindow& window, TextureHolder& textures, FontH
 	, sound(&sound)
 	, keys1(&keys1)
 	, keys2(&keys2)
+	, socket(&socket)
+	, server(&server)
+	, localID(&localID)
 {
 }
 

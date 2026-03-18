@@ -34,8 +34,6 @@ private:
 	sf::Text m_instruction_text;
     std::vector<sf::Text> m_stat_texts;
 
-    std::unique_ptr<GameServer> m_server;
-    sf::TcpSocket m_socket;
 	bool m_is_host;
     bool m_connected;
     uint8_t m_player_id;

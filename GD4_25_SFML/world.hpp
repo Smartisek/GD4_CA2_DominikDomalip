@@ -28,6 +28,7 @@ public:
 	bool HasAlivePlayer() const;
 	void SetCurrentMap(MapType map);
 
+	bool PollGameAction(GameActions::Action& out);
 private:
 	void LoadTextures();
 	void BuildScene();

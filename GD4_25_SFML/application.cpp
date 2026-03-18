@@ -11,7 +11,7 @@
 #include "tank_select_state.hpp"
 #include "game_over_state.hpp"
 #include "about_state.hpp"
-
+#include "multiplayer_game_state.hpp"
 
 
 Application::Application() 
@@ -23,7 +23,8 @@ Application::Application()
 	, m_keys1(1) // 1 means Player 1 defaults
 	, m_keys2(2) // 2 means Player 2 defaults
 	, m_multiplayer_host(false)
-	, m_stack(State::Context(m_window, m_textures, m_fonts, m_music, m_sound, m_keys1, m_keys2))
+	, m_socket()
+	, m_stack(State::Context(m_window, m_textures, m_fonts, m_music, m_sound, m_keys1, m_keys2, m_socket, m_server, m_local_id))
 {
 	m_window.setKeyRepeatEnabled(false);
 	m_window.setVerticalSyncEnabled(true);
@@ -93,14 +94,19 @@ void Application::RegisterStates()
 {
 	m_stack.RegisterState<TitleState>(StateID::kTitle);
 	m_stack.RegisterState<MenuState>(StateID::kMenu);
+	//lobby states 
 	m_stack.RegisterState<TankSelectState>(StateID::kHostGame, true);
 	m_stack.RegisterState<TankSelectState>(StateID::kJoinGame, false);
+
 	m_stack.RegisterState<GameState>(StateID::kGame);
 	m_stack.RegisterState<AboutState>(StateID::kAbout);
 	m_stack.RegisterState<PauseState>(StateID::kPause);
 	m_stack.RegisterState<SettingsState>(StateID::kSettings);
 	m_stack.RegisterState<TankSelectState>(StateID::kTankSelect, true);
 	m_stack.RegisterState<LevelSelectState>(StateID::kLevelSelect, true);
+	//multiplayer states 
+	//m_stack.RegisterState<MultiplayerGameState>(StateID::kMultiplayerHost, true); 
+	//m_stack.RegisterState<MultiplayerGameState>(StateID::kMultiplayerJoin, false); 
 
 	//m_stack.RegisterState<GameOverState>(StateID::kGameOver);
 }

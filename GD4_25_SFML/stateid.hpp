@@ -13,5 +13,7 @@ enum class StateID
 	kSettings,
 	kGameOver,
 	kHostGame,
-	kJoinGame
+	kJoinGame,
+	kMultiplayerHost,
+	kMultiplayerJoin
 };

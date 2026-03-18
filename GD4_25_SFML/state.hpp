@@ -8,6 +8,8 @@
 #include "sound_player.hpp"
 #include "map_type.hpp"
 #include "tank_type.hpp"
+#include <SFML/Network/TcpSocket.hpp>
+#include "game_server.hpp"
 
 class StateStack;
 class KeyBinding;
@@ -21,7 +23,7 @@ public:
 	struct Context
 	{
 		Context(sf::RenderWindow& window, TextureHolder& textures, FontHolder& fonts,
-			MusicPlayer& music, SoundPlayer& sound, KeyBinding& keys1, KeyBinding& keys2);
+			MusicPlayer& music, SoundPlayer& sound, KeyBinding& keys1, KeyBinding& keys2, sf::TcpSocket& socket, std::unique_ptr<GameServer>& server, uint8_t& local_id);
 		//TODO unique_ptr rather than raw pointers here?
 		sf::RenderWindow* window;
 		TextureHolder* textures;
@@ -30,6 +32,9 @@ public:
 		SoundPlayer* sound;
 		KeyBinding* keys1; 
 		KeyBinding* keys2;
+		sf::TcpSocket* socket;
+		std::unique_ptr<GameServer>* server;
+		uint8_t* local_id;
 	};
 
 public:
