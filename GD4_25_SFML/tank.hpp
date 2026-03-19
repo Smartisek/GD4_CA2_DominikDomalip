@@ -41,6 +41,8 @@ public:
 	//Network related
 	int GetIdentifier() const;
 	void SetIdentifier(int identifier);
+	void SetHitpoints(int points);
+	void SetAmmo(int ammo);
 
 
 private:

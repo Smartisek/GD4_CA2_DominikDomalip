@@ -175,6 +175,7 @@ void TankSelectState::HandlePacket(uint8_t packetType, sf::Packet& packet)
                 {
                     m_player_id = playerId;
                     m_connected = true;
+                    *GetContext().local_id = playerId;
                     std::cout << "[CLIENT] Set own ID to: " << static_cast<int>(playerId) << std::endl;
                 }
 
@@ -219,7 +220,7 @@ void TankSelectState::HandlePacket(uint8_t packetType, sf::Packet& packet)
             break;
         }
 
-        case Server::PacketType::kInitialState:
+        case Server::PacketType::kStartGame:
         {
             uint8_t winningMap;
             packet >> winningMap; // read map chosen byt the server 
@@ -288,8 +289,9 @@ bool TankSelectState::Update(sf::Time)
         m_keepalive_clock.restart();
     }
 
+    bool state_change_requested = false;
     sf::Packet packet;
-    while (GetContext().socket->receive(packet) == sf::Socket::Status::Done)
+    while (GetContext().socket->receive(packet) == sf::Socket::Status::Done && !state_change_requested)
     {
         packetCount++;
         uint8_t packetType;
@@ -297,7 +299,26 @@ bool TankSelectState::Update(sf::Time)
         {
             std::cout << "[CLIENT] Received packet type: " << static_cast<int>(packetType)
                 << " (kLobbyUpdate=1, kInitialState=2)" << std::endl;
-            HandlePacket(packetType, packet);
+
+            //dont consume the packet thats meant for multiplayer gamestate
+            if (packetType == static_cast<uint8_t>(Server::PacketType::kStartGame))
+            {
+                HandlePacket(packetType, packet);
+                // State will be pushed/popped, so stop processing
+                break;
+            }
+            else if (packetType != static_cast<uint8_t>(Server::PacketType::kInitialState))
+            {
+                //dont break let multiplayer game state consume it 
+                HandlePacket(packetType, packet);
+            }
+
+
+            //break the loop when start game packet is received so that initial state is not discarted 
+            if (packetType == static_cast<uint8_t>(Server::PacketType::kStartGame))
+            {
+                state_change_requested = true;
+            }
         }
         else
         {

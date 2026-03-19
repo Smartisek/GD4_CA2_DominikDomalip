@@ -27,6 +27,7 @@ public:
 	Tank* GetTank(uint8_t identifier) const;
 	bool HasAlivePlayer() const;
 	void SetCurrentMap(MapType map);
+	void InitializeScene();
 
 	bool PollGameAction(GameActions::Action& out);
 private:

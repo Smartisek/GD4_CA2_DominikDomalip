@@ -488,9 +488,18 @@ void GameServer::CheckIfMapVotingDone()
 		}
 	}
 
-	if (totalVotes != m_connected_players)
+	//auto vote for players that only pressed ready wihtout voting 
+	if (totalVotes < m_connected_players)
 	{
-		return; 
+		for (auto& [id, info] : m_tank_info)
+		{
+			if (info.m_map_vote == 255)
+			{
+				info.m_map_vote = std::rand() % static_cast<int>(MapType::kTypeCount);
+				votePlayer[info.m_map_vote]++;
+				totalVotes++;
+			}
+		}
 	}
 
 	// choose the map based on votes
@@ -520,10 +529,17 @@ void GameServer::CheckIfMapVotingDone()
 	std::cout << "[SERVER] Match starting on Map: " << (int)finalMap << std::endl;
 
 	// start game packet 
-	sf::Packet packet;
-	packet << static_cast<uint8_t>(Server::PacketType::kInitialState);
-	packet << m_selected_map;
-	packet << static_cast<uint8_t>(m_tank_info.size());
+	sf::Packet packetStart;
+	packetStart << static_cast<uint8_t>(Server::PacketType::kStartGame);
+	packetStart << m_selected_map;
+	SendToAll(packetStart);
+
+	//second packet to send initial player spawn positions and other info
+	sf::Packet statePacket;
+	statePacket << static_cast<uint8_t>(Server::PacketType::kInitialState);
+	statePacket << m_selected_map;
+	statePacket << static_cast<uint8_t>(m_tank_info.size());
+
 
 	// Calculate spawn positions in a circle
 	sf::Vector2f center = m_battlefield_size / 2.f;
@@ -540,12 +556,12 @@ void GameServer::CheckIfMapVotingDone()
 		// Authoritative rotation: make everyone face the center
 		pair.second.m_rotation = Utility::ToDegrees(std::atan2(center.y - pair.second.m_position.y, center.x - pair.second.m_position.x)) + 90.f;
 
-		packet << pair.first;
-		packet << pair.second.m_tank_type;
-		packet << pair.second.m_position.x;
-		packet << pair.second.m_position.y;
+		statePacket << pair.first;
+		statePacket << pair.second.m_tank_type;
+		statePacket << pair.second.m_position.x;
+		statePacket << pair.second.m_position.y;
 		playerIndex++;
 	}
 
-	SendToAll(packet);
+	SendToAll(statePacket);
 }

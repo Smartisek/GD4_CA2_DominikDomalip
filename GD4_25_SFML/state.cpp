@@ -21,7 +21,7 @@ State::Context::Context(sf::RenderWindow& window, TextureHolder& textures, FontH
 	, keys2(&keys2)
 	, socket(&socket)
 	, server(&server)
-	, localID(&localID)
+	, local_id(&localID)
 {
 }
 

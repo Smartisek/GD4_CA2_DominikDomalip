@@ -459,3 +459,15 @@ void Tank::SetIdentifier(int identifier)
 {
 	m_identifier = identifier;
 }
+
+void Tank::SetHitpoints(int points)
+{
+	m_hitpoints = std::clamp(points, 0, m_max_hitpoints);
+}
+
+void Tank::SetAmmo(int amount)
+{
+	// Clamp ammo between 0 and max, same logic as Reload
+	int maxAmmo = Table[static_cast<int>(m_type)].m_ammo_amount;
+	m_current_ammo = std::clamp(amount, 0, maxAmmo);
+}

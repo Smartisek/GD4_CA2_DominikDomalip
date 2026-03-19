@@ -24,10 +24,10 @@ public:
 protected:
 	virtual void UpdateCurrent(sf::Time dt, CommandQueue& commands) override;
 	void UpdateStamina(sf::Time dt);
+	int m_hitpoints;
 
 private:
 	sf::Vector2f m_velocity;
-	int m_hitpoints;
 
 	float m_stamina;
 	float m_max_stamina;

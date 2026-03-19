@@ -781,3 +781,8 @@ bool World::PollGameAction(GameActions::Action& out)
 {
 	return m_network_node->PollGameAction(out);
 }
+
+void World::InitializeScene()
+{
+	BuildScene();
+}

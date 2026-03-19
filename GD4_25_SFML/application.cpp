@@ -105,8 +105,8 @@ void Application::RegisterStates()
 	m_stack.RegisterState<TankSelectState>(StateID::kTankSelect, true);
 	m_stack.RegisterState<LevelSelectState>(StateID::kLevelSelect, true);
 	//multiplayer states 
-	//m_stack.RegisterState<MultiplayerGameState>(StateID::kMultiplayerHost, true); 
-	//m_stack.RegisterState<MultiplayerGameState>(StateID::kMultiplayerJoin, false); 
+	m_stack.RegisterState<MultiplayerGameState>(StateID::kMultiplayerHost, true); 
+	m_stack.RegisterState<MultiplayerGameState>(StateID::kMultiplayerJoin, false); 
 
 	//m_stack.RegisterState<GameOverState>(StateID::kGameOver);
 }

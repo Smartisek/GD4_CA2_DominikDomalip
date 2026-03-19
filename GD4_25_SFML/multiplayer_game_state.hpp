@@ -37,6 +37,7 @@ private:
 	bool m_connected;
 	bool m_active_state;
 	bool m_game_started;
+	bool m_scene_initialized;
 	//uis
 	sf::Time m_client_timeout;
 	sf::Time m_time_since_last_packet;
