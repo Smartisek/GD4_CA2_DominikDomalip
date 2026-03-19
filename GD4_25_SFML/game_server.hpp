@@ -46,6 +46,7 @@ private:
 		float stamina;
 		std::map<uint8_t, bool> m_real_time_actions;
 		uint8_t m_map_vote;
+		sf::Vector2f m_velocity;
 	};
 
 	typedef std::unique_ptr<RemotePeer> PeerPtr;

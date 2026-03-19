@@ -264,16 +264,24 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 
 				packet >> identifier >> position.x >> position.y >> rotation >> hitpoints >> ammo;
 				Tank* tank = m_world.GetTank(identifier);
-				bool is_local = std::find(m_local_player_identifiers.begin(), m_local_player_identifiers.end(), identifier) != m_local_player_identifiers.end();
+				if (!tank) continue;
 
-				if (tank && !is_local)
+				//check if this is clients own tank
+				bool is_local = (identifier == *GetContext().local_id);
+
+				if (is_local)
 				{
-					sf::Vector2f interp_pos = tank->getPosition() + (position - tank->getPosition()) * 0.1f;
-					tank->setPosition(interp_pos);
-					tank->setRotation(sf::degrees(rotation));
+					//only need to sync hitpoint and ammo for local player
 					tank->SetHitpoints(hitpoints);
 					tank->SetAmmo(ammo);
-
+				}
+				else
+				{
+					//for remote tanks smooth the position and update them
+					sf::Vector2f lerpPos = tank->getPosition() + (position - tank->getPosition()) * 0.15f;
+					tank->setPosition(lerpPos);
+					tank->setRotation(sf::degrees(rotation));
+					tank->SetHitpoints(hitpoints);
 				}
 			}
 			break;

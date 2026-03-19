@@ -108,6 +108,8 @@ void GameServer::ExecutionThread()
 void GameServer::Tick()
 {
 	const float dt = 1.f / 60.f;
+	float damping = 0.6f;
+	float frictionFactor = std::exp(-damping * dt * 10.0f);
 
 	//Server will be the authoritative for the game, not clients, so i update the game logic physics here and send it to clients in the next tick
 	for (auto& pair : m_tank_info)
@@ -116,41 +118,43 @@ void GameServer::Tick()
 		// get the tank data based on chosen tanks type
 		const TankData& stats = TankTable[info.m_tank_type];
 
-		sf::Vector2f direction(0.f, 0.f);
-		float currentSpeed = stats.m_speed;
+		sf::Vector2f acceleration(0.f, 0.f);
+		if (info.m_real_time_actions[static_cast<uint8_t>(Action::kMoveLeft)]) acceleration.x -= 1.f;
+		if (info.m_real_time_actions[static_cast<uint8_t>(Action::kMoveRight)]) acceleration.x += 1.f;
+		if (info.m_real_time_actions[static_cast<uint8_t>(Action::kMoveUp)]) acceleration.y -= 1.f;
+		if (info.m_real_time_actions[static_cast<uint8_t>(Action::kMoveDown)]) acceleration.y += 1.f;
 
-		//check sprinting logic and apply based on stats for tank type 
-		if (info.m_real_time_actions[static_cast<uint8_t>(Action::kSprint)] && info.stamina > 0.f)
-		{
-			currentSpeed *= stats.m_sprint_multiplier;
+		float currentMaxSpeed = stats.m_speed;
+
+		if (info.m_real_time_actions[static_cast<uint8_t>(Action::kSprint)] && info.stamina > 0.f) {
+			currentMaxSpeed *= stats.m_sprint_multiplier;
 			info.stamina -= stats.m_drain_rate * dt;
 		}
-		else
+		else 
 		{
-			//just regenerate the stamina based on tank type stats
 			info.stamina = std::min(stats.m_max_stamina, info.stamina + stats.m_recharge_rate * dt);
 		}
 
-		//Movement logic 
-		if (info.m_real_time_actions[static_cast<uint8_t>(Action::kMoveLeft)]) direction.x -= 1.f;
-		if (info.m_real_time_actions[static_cast<uint8_t>(Action::kMoveRight)]) direction.x += 1.f;
-		if (info.m_real_time_actions[static_cast<uint8_t>(Action::kMoveUp)]) direction.y -= 1.f;
-		if (info.m_real_time_actions[static_cast<uint8_t>(Action::kMoveDown)]) direction.y += 1.f;
 
-		if (direction.x != 0.f || direction.y != 0.f)
+		if (acceleration.x != 0.f || acceleration.y != 0.f) 
 		{
-			float len = std::sqrt(direction.x * direction.x + direction.y * direction.y);
-			direction /= len;
-
-			info.m_rotation = (Utility::ToDegrees(std::atan2(direction.y, direction.x)) + 90.f);
+			float len = std::sqrt(acceleration.x * acceleration.x + acceleration.y * acceleration.y);
+			info.m_velocity += (acceleration / len) * currentMaxSpeed * dt * 10.0f; 
 		}
-		
-		//aply movement 
-		info.m_position += direction * currentSpeed * dt;
 
-		//keep inside the arena
-		info.m_position.x = std::max(0.f, std::min(info.m_position.x, m_battlefield_size.x));
-		info.m_position.y = std::max(0.f, std::min(info.m_position.y, m_battlefield_size.y));
+		//apply the friction 
+		info.m_velocity *= frictionFactor;
+		//apply movement
+		info.m_position += info.m_velocity * dt;
+
+		//rotation update
+		if (std::abs(info.m_velocity.x) > 0.1f || std::abs(info.m_velocity.y) > 0.1f) 
+		{
+			info.m_rotation = Utility::ToDegrees(std::atan2(info.m_velocity.y, info.m_velocity.x)) + 90.f;
+		}
+		//boundry check
+		info.m_position.x = std::clamp(info.m_position.x, 40.f, m_battlefield_size.x - 40.f);
+		info.m_position.y = std::clamp(info.m_position.y, 40.f, m_battlefield_size.y - 40.f);
 	}
 }
 

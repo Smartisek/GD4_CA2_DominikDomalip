@@ -196,12 +196,12 @@ void World::BuildScene()
 	m_scene_layers[static_cast<int>(SceneLayers::kBackground)]->AttachChild(std::move(background_sprite));
 
 	//Obstacles spawnign
-	for (const sf::Vector2f& pos : currentMapData.m_obstacle_positions) {
+	/*for (const sf::Vector2f& pos : currentMapData.m_obstacle_positions) {
 		std::unique_ptr<Obstacle> obstacle(new Obstacle(m_textures, 150));
 		obstacle->setScale(sf::Vector2f{ 0.1f, 0.2f });
 		obstacle->setPosition(pos);
 		m_scene_layers[static_cast<int>(SceneLayers::kUpperGround)]->AttachChild(std::move(obstacle));
-	}
+	}*/
 
 	//turret setting
 	std::unique_ptr<Turret> t1(new Turret(TurretType::kStandard, m_textures));
