@@ -294,6 +294,12 @@ void World::HandleCollisions() {
 		{
 			auto& tank = static_cast<Tank&>(*pair.first);
 			auto& bullet = static_cast<Projectile&>(*pair.second);
+
+			if (bullet.GetOwnerId() == tank.GetIdentifier())
+			{
+				continue; //ignore its onw bullets
+			}
+
 			// server should correct this (might need to remove? will see after testing)
 			tank.Damage(bullet.GetDamage());
 			bullet.Destroy();
@@ -736,17 +742,16 @@ Tank* World::AddTank(uint8_t identifier, TankType type)
 {
 	std::unique_ptr<Tank> player(new Tank(identifier, type, m_textures, m_fonts));
 	//this should be overwritten by the server anyway 
-	player->setPosition(m_camera.getCenter());
-	player->setScale(sf::Vector2f(0.5f, 0.5f));
+	player->setPosition(m_spawn_position);
+	
+	//give id so it can be tracked and controlled by the multiplayer game state
+	player->SetIdentifier(identifier);
 
-	// add to the array of active players 
-	m_player_tanks.emplace_back(player.get());
-	//add to the correct scene layer
+	Tank* ptr = player.get();
 	m_scene_layers[static_cast<int>(SceneLayers::kUpperGround)]->AttachChild(std::move(player));
+	m_player_tanks.push_back(ptr);
 
-	std::cout << "World::AddTank ID: " << +identifier << std::endl;
-
-	return m_player_tanks.back();
+	return ptr;
 }
 
 Tank* World::GetTank(uint8_t identifier) const

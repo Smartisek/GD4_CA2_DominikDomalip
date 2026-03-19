@@ -8,7 +8,10 @@ namespace
     const std::vector<ProjectileData> Table = InitializeProjectileData();
 }
 
-Projectile::Projectile(ProjectileType type, const TextureHolder& textures, ReceiverCategories owner) : Entity(1,1,1,1,1), m_type(type), m_sprite(textures.Get(Table[static_cast<int>(type)].m_texture)), m_owner(owner)
+Projectile::Projectile(ProjectileType type, const TextureHolder& textures, ReceiverCategories owner, uint8_t owner_id)
+    : Entity(1,1,1,1,1), m_type(type), m_sprite(textures.Get(Table[static_cast<int>(type)].m_texture))
+    , m_owner(owner)
+    , m_owner_id(owner_id)
 {
     Utility::CentreOrigin(m_sprite);
     if (m_owner == ReceiverCategories::kEnemyProjectile)
@@ -84,4 +87,9 @@ void Projectile::UpdateCurrent(sf::Time dt, CommandQueue& commands)
 void Projectile::DrawCurrent(sf::RenderTarget& target, sf::RenderStates states) const
 {
     target.draw(m_sprite, states);
+}
+
+uint8_t Projectile::GetOwnerId() const
+{
+    return m_owner_id;
 }

@@ -157,7 +157,7 @@ void Turret::CreateProjectile(SceneNode& node, const TextureHolder& textures) co
 	sf::Vector2f offset = direction * 60.f;
 	sf::Vector2f spawnPos = getPosition() + offset;
 
-	std::unique_ptr<Projectile> projectile(new Projectile(m_bullet_type, textures, ReceiverCategories::kEnemyProjectile));
+	std::unique_ptr<Projectile> projectile(new Projectile(m_bullet_type, textures, ReceiverCategories::kEnemyProjectile, -2));
 	projectile->setPosition(spawnPos);
 	projectile->setRotation(sf::degrees(rotation));
 

@@ -7,7 +7,7 @@
 class Projectile : public Entity
 {
 public:
-	Projectile(ProjectileType type, const TextureHolder& textures, ReceiverCategories owner);
+	Projectile(ProjectileType type, const TextureHolder& textures, ReceiverCategories owner, uint8_t owner_id = -1);
 	void GuideTowards(sf::Vector2f position);
 	bool IsGuided() const;
 
@@ -16,6 +16,7 @@ public:
 
 	float GetMaxSpeed() const;
 	float GetDamage() const;
+	uint8_t GetOwnerId() const;
 
 private:
 	virtual void UpdateCurrent(sf::Time dt, CommandQueue& commands) override;
@@ -26,4 +27,5 @@ private:
 	sf::Sprite m_sprite;
 	sf::Vector2f m_target_direction;
 	ReceiverCategories m_owner; //to distinguish between player 1 and player 2 projectiles
+	uint8_t m_owner_id;
 };

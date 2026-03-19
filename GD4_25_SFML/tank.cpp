@@ -235,7 +235,7 @@ void Tank::CreateBullet(SceneNode& node, const TextureHolder& textures) const
 	ReceiverCategories owner = ReceiverCategories::kPlayerProjectile;
 	
 
-	std::unique_ptr<Projectile> bullet(new Projectile(projType, textures, owner));
+	std::unique_ptr<Projectile> bullet(new Projectile(projType, textures, owner, m_identifier));
 
 	if (projType == ProjectileType::kMissile)
 	{
