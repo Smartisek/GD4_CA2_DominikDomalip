@@ -129,29 +129,6 @@ bool MultiplayerGameState::Update(sf::Time dt)
 			//position updates
 			if (m_tick_clock.getElapsedTime() > sf::seconds(1.f / kNetworkUpdateRate))
 			{
-				// Send current action state to server
-				for (uint8_t identifier : m_local_player_identifiers)
-				{
-					for (int i = 0; i < static_cast<int>(Action::kActionCount); ++i)
-					{
-						Action action = static_cast<Action>(i);
-
-						if (IsRealtimeAction(action))
-						{
-							sf::Keyboard::Scancode boundKey = GetContext().keys1->GetAssignedKey(action);
-							bool isPressed = sf::Keyboard::isKeyPressed(boundKey);
-
-							sf::Packet input_packet;
-							input_packet << static_cast<uint8_t>(Client::PacketType::kPlayerRealtimeChange);
-							input_packet << identifier;
-							input_packet << static_cast<uint8_t>(action);
-							input_packet << isPressed;
-							GetContext().socket->send(input_packet);
-						}
-					}
-				}
-
-				// Send position updates
 				sf::Packet position_update_packet;
 				position_update_packet << static_cast<uint8_t>(Client::PacketType::kStateUpdate);
 				position_update_packet << static_cast<uint8_t>(m_local_player_identifiers.size());
@@ -311,14 +288,14 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 
 				//check if this is clients own tank
 				bool is_local = (identifier == *GetContext().local_id);
-
+				 
 				if (is_local)
 				{
 					//sync positions with server 
 					// little smoothing instead of snapping positions 
-					/*sf::Vector2f correctionPos = tank->getPosition() + (position - tank->getPosition()) * 0.1f;
+					sf::Vector2f correctionPos = tank->getPosition() + (position - tank->getPosition()) * 0.05f;
 					tank->setPosition(correctionPos);
-					tank->setRotation(sf::degrees(rotation));*/
+					tank->setRotation(sf::degrees(rotation));
 
 					//sync stats
 					tank->SetHitpoints(hitpoints);
