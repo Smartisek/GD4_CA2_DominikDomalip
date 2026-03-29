@@ -358,12 +358,17 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
 
 		case Client::PacketType::kPlayerRealtimeChange:
 		{
-			uint8_t action;
+			uint8_t action, identifier;
 			bool actionEnabled;
-			packet >> action >> actionEnabled;
+			packet >> identifier >> action >> actionEnabled;
 
-			uint8_t id = receiving_peer.m_tank_identifiers[0];
-			m_tank_info[id].m_real_time_actions[action] = actionEnabled;
+			if (m_tank_info.find(identifier) != m_tank_info.end())
+			{
+				m_tank_info[identifier].m_real_time_actions[action] = actionEnabled;
+				std::cout << "[SERVER] Tank " << static_cast<int>(identifier)
+					<< " Action " << static_cast<int>(action)
+					<< " = " << (actionEnabled ? "true" : "false") << std::endl;
+			}
 			break;
 		}
 		case Client::PacketType::kKeepAlive:
