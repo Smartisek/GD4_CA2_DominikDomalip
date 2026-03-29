@@ -14,6 +14,7 @@ constexpr unsigned int kMinimumFontSize = 12;
 
 //network constants 
 constexpr float kNetworkUpdateRate = 120.f;
+constexpr float kServerPhysicsRate = 120.f;
 constexpr float kNetworkInterpolation = 0.5f;
 constexpr float kClientTimeout = 30.f;
 constexpr float kSpawnRadius = 800.f; //how far from center to spawn the tanks
