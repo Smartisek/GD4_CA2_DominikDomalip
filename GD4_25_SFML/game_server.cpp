@@ -343,14 +343,14 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
 				float stamina;
 
 				packet >> identifier >> position.x >> position.y >> rotation >> hitpoints >> ammo >> stamina;
-				std::cout << "[SERVER] Tank " << static_cast<int>(identifier)
-					<< " moved to (" << position.x << ", " << position.y << ")" << std::endl;
 
 				if (m_tank_info.find(identifier) != m_tank_info.end())
 				{
-					m_tank_info[identifier].m_position = position;
-					m_tank_info[identifier].m_rotation = rotation;
-					//server should be keeping autorative data like hitpoints 
+					m_tank_info[identifier].m_hitpoints = hitpoints;
+					m_tank_info[identifier].m_current_ammo = ammo;
+
+					std::cout << "[SERVER] Tank " << static_cast<int>(identifier)
+						<< " moved to (" << position.x << ", " << position.y << ")" << std::endl;
 				}
 			}
 			break;
