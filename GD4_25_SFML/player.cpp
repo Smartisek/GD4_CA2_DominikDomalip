@@ -142,7 +142,28 @@ void Player::HandleRealTimeInput(CommandQueue& command_queue)
    // local realtime input
     if ((m_socket && IsLocal()) || !m_socket)
     {
-        std::vector<Action> activeActions = m_key_binding->GetRealtimeActions();
+        if (!m_key_binding) return;
+
+        std::vector<Action> activeActions;
+        
+        for (int i = 0; i < static_cast<int>(Action::kActionCount); ++i)
+        {
+            Action action = static_cast<Action>(i);
+
+            // check if action is realtime for example moving is realtime 
+            if (IsRealtimeAction(action))
+            {
+				//check the boundkeys from settings for example wasd and check if they are pressed
+                sf::Keyboard::Scancode boundKey = m_key_binding->GetAssignedKey(action);
+
+                // check if that key is being pressed 
+                if (sf::Keyboard::isKeyPressed(boundKey))
+                {
+                    activeActions.push_back(action);
+                }
+            }
+        }
+        // psuh active actions to the command queue 
         for (Action action : activeActions)
         {
             command_queue.Push(m_action_binding[action]);
