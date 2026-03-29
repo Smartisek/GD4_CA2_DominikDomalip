@@ -12,5 +12,8 @@ constexpr float kReferenceHeight = 1080.f;
 constexpr float kMinimapScale = 0.5f;
 constexpr unsigned int kMinimumFontSize = 12;
 
+//network constants 
 constexpr float kNetworkUpdateRate = 60.f;
 constexpr float kNetworkInterpolation = 0.5f;
+constexpr float kClientTimeout = 30.f;
+constexpr float kSpawnRadius = 800.f; //how far from center to spawn the tanks

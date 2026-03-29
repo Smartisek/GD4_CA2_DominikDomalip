@@ -548,7 +548,7 @@ void GameServer::CheckIfMapVotingDone()
 
 	// Calculate spawn positions in a circle
 	sf::Vector2f center = m_battlefield_size / 2.f;
-	float radius = 400.f;
+	float radius = kSpawnRadius;
 	float angleStep = 360.f / m_tank_info.size();
 	int playerIndex = 0;
 

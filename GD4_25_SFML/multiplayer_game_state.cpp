@@ -17,7 +17,7 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
 	, m_game_started(true)
 	, m_scene_initialized(false)
 	, m_client_timeout(sf::seconds(2.f))
-	, m_time_since_last_packet(sf::seconds(0.f))
+	, m_time_since_last_packet(sf::seconds(kClientTimeout))
 	, m_broadcast_text(context.fonts->Get(FontID::kMain))
 	, m_failed_connection_text(context.fonts->Get(FontID::kMain))
 {
