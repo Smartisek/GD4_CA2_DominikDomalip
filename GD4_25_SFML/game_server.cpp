@@ -9,6 +9,7 @@
 #include "pickup_type.hpp"
 #include <iostream>
 #include "map_type.hpp"
+#include "constants.hpp"
 
 namespace
 {
@@ -68,7 +69,7 @@ void GameServer::ExecutionThread()
 
 	sf::Time stepInterval = sf::seconds(1.f / 60.f); //60 updates per second
 	sf::Time stepTime = sf::Time::Zero;
-	sf::Time tickInterval = sf::seconds(1.f / 20.f); // 20 updates per second for network updates
+	sf::Time tickInterval = sf::seconds(1.f / kNetworkUpdateRate); // 20 updates per second for network updates
 	sf::Time tickTime = sf::Time::Zero;
 
 	sf::Clock stepClock;

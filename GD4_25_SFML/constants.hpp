@@ -11,3 +11,6 @@ constexpr float kReferenceWidth = 1920.f;
 constexpr float kReferenceHeight = 1080.f;
 constexpr float kMinimapScale = 0.5f;
 constexpr unsigned int kMinimumFontSize = 12;
+
+constexpr float kNetworkUpdateRate = 60.f;
+constexpr float kNetworkInterpolation = 0.5f;

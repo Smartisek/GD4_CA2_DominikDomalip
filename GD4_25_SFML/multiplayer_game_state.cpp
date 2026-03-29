@@ -285,7 +285,7 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 				else
 				{
 					//for remote tanks smooth the position and update them
-					sf::Vector2f lerpPos = tank->getPosition() + (position - tank->getPosition()) * 0.15f;
+					sf::Vector2f lerpPos = tank->getPosition() + (position - tank->getPosition()) * kNetworkInterpolation;
 					tank->setPosition(lerpPos);
 					tank->setRotation(sf::degrees(rotation));
 					tank->SetHitpoints(hitpoints);
