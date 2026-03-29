@@ -413,7 +413,7 @@ void Tank::UpdateMovementAnimation(sf::Time dt)
 		// oscilation movement 
 		float scale = 1.0f + std::sin(m_anim_timer) * 0.03f * intensity;
 
-		m_sprite.setScale(sf::Vector2f(scale, scale));
+		m_sprite.setScale(sf::Vector2f(1.f, 1.f));
 	}
 	else
 	{
