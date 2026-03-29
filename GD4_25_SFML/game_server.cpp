@@ -67,9 +67,9 @@ void GameServer::ExecutionThread()
 {
 	SetListening(true);
 
-	sf::Time stepInterval = sf::seconds(1.f / 60.f); //60 updates per second
+	sf::Time stepInterval = sf::seconds(1.f / kServerPhysicsRate); //60 updates per second
 	sf::Time stepTime = sf::Time::Zero;
-	sf::Time tickInterval = sf::seconds(1.f / kNetworkUpdateRate); // 20 updates per second for network updates
+	sf::Time tickInterval = sf::seconds(1.f / kNetworkUpdateRate); 
 	sf::Time tickTime = sf::Time::Zero;
 
 	sf::Clock stepClock;
@@ -108,7 +108,7 @@ void GameServer::ExecutionThread()
 
 void GameServer::Tick()
 {
-	const float dt = 1.f / 60.f;
+	const float dt = kServerPhysicsRate;
 	float damping = 0.6f;
 	float frictionFactor = std::exp(-damping * dt * 10.0f);
 
