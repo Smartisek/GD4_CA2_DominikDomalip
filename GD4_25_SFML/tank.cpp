@@ -413,7 +413,7 @@ void Tank::UpdateMovementAnimation(sf::Time dt)
 		// oscilation movement 
 		float scale = 1.0f + std::sin(m_anim_timer) * 0.03f * intensity;
 
-		m_sprite.setScale(sf::Vector2f(scale, scale));
+		m_sprite.setScale(sf::Vector2f(1.f, 1.f));
 	}
 	else
 	{
@@ -470,4 +470,14 @@ void Tank::SetAmmo(int amount)
 	// Clamp ammo between 0 and max, same logic as Reload
 	int maxAmmo = Table[static_cast<int>(m_type)].m_ammo_amount;
 	m_current_ammo = std::clamp(amount, 0, maxAmmo);
+}
+
+void Tank::SetMissileAmmo(uint8_t ammo) 
+{
+	m_missile_ammo = ammo; 
+}
+
+void Tank::SetStamina(float stamina)
+{
+	m_stamina = stamina;
 }

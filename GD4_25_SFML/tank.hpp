@@ -43,6 +43,8 @@ public:
 	void SetIdentifier(int identifier);
 	void SetHitpoints(int points);
 	void SetAmmo(int ammo);
+	void SetMissileAmmo(uint8_t ammo);
+	void SetStamina(float stamina);
 
 
 private:

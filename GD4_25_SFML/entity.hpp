@@ -25,11 +25,11 @@ protected:
 	virtual void UpdateCurrent(sf::Time dt, CommandQueue& commands) override;
 	void UpdateStamina(sf::Time dt);
 	int m_hitpoints;
+	float m_stamina;
 
 private:
 	sf::Vector2f m_velocity;
 
-	float m_stamina;
 	float m_max_stamina;
 	bool m_is_sprinting;
 	float m_stamina_drain_rate;

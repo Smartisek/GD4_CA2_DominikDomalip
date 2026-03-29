@@ -11,7 +11,7 @@ std::vector<TankData> InitializeTankData()
 {
 	std::vector<TankData> data(static_cast<int>(TankType::kTankCount));
 	data[static_cast<int>(TankType::kTank1)].m_hitpoints = 150;
-	data[static_cast<int>(TankType::kTank1)].m_speed = 40.f;
+	data[static_cast<int>(TankType::kTank1)].m_speed = 70.f;
 	data[static_cast<int>(TankType::kTank1)].m_fire_interval = sf::seconds(1);
 	data[static_cast<int>(TankType::kTank1)].m_texture = TextureID::kTankBody;
 	data[static_cast<int>(TankType::kTank1)].m_texture_rect = sf::IntRect({ 0, 0 }, { 159, 249 });
@@ -22,7 +22,7 @@ std::vector<TankData> InitializeTankData()
 	data[static_cast<int>(TankType::kTank1)].m_ammo_amount = 11;
 
 	data[static_cast<int>(TankType::kTank2)].m_hitpoints = 130;
-	data[static_cast<int>(TankType::kTank2)].m_speed = 55.f;
+	data[static_cast<int>(TankType::kTank2)].m_speed = 85.f;
 	data[static_cast<int>(TankType::kTank2)].m_fire_interval = sf::seconds(1);
 	data[static_cast<int>(TankType::kTank2)].m_texture = TextureID::kTankBody2;
 	data[static_cast<int>(TankType::kTank2)].m_texture_rect = sf::IntRect({ 0, 0 }, { 166, 247 });
@@ -33,7 +33,7 @@ std::vector<TankData> InitializeTankData()
 	data[static_cast<int>(TankType::kTank2)].m_ammo_amount = 12;
 
 	data[static_cast<int>(TankType::kTank3)].m_hitpoints = 85;
-	data[static_cast<int>(TankType::kTank3)].m_speed = 70.f;
+	data[static_cast<int>(TankType::kTank3)].m_speed = 100.f;
 	data[static_cast<int>(TankType::kTank3)].m_fire_interval = sf::seconds(1);
 	data[static_cast<int>(TankType::kTank3)].m_texture = TextureID::kTankBody3;
 	data[static_cast<int>(TankType::kTank3)].m_texture_rect = sf::IntRect({ 0, 0 }, { 131, 247 });
@@ -44,7 +44,7 @@ std::vector<TankData> InitializeTankData()
 	data[static_cast<int>(TankType::kTank3)].m_ammo_amount = 15;
 
 	data[static_cast<int>(TankType::kTank4)].m_hitpoints = 130;
-	data[static_cast<int>(TankType::kTank4)].m_speed = 40.f;
+	data[static_cast<int>(TankType::kTank4)].m_speed = 70.f;
 	data[static_cast<int>(TankType::kTank4)].m_fire_interval = sf::seconds(1);
 	data[static_cast<int>(TankType::kTank4)].m_texture = TextureID::kTankBody4;
 	data[static_cast<int>(TankType::kTank4)].m_texture_rect = sf::IntRect({ 0, 0 }, { 114, 240 });

@@ -67,9 +67,9 @@ void GameServer::ExecutionThread()
 {
 	SetListening(true);
 
-	sf::Time stepInterval = sf::seconds(1.f / 60.f); //60 updates per second
+	sf::Time stepInterval = sf::seconds(1.f / kServerPhysicsRate); //60 updates per second
 	sf::Time stepTime = sf::Time::Zero;
-	sf::Time tickInterval = sf::seconds(1.f / kNetworkUpdateRate); // 20 updates per second for network updates
+	sf::Time tickInterval = sf::seconds(1.f / kNetworkUpdateRate); 
 	sf::Time tickTime = sf::Time::Zero;
 
 	sf::Clock stepClock;
@@ -108,7 +108,7 @@ void GameServer::ExecutionThread()
 
 void GameServer::Tick()
 {
-	const float dt = 1.f / 60.f;
+	const float dt = 1.f / kServerPhysicsRate;
 	float damping = 0.6f;
 	float frictionFactor = std::exp(-damping * dt * 10.0f);
 
@@ -327,14 +327,48 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
 			break;
 		}
 
+		case Client::PacketType::kStateUpdate:
+		{
+			uint8_t tank_count;
+			packet >> tank_count;
+
+			std::cout << "[SERVER] Received StateUpdate with " << static_cast<int>(tank_count) << " tanks" << std::endl;
+
+			for (uint8_t i = 0; i < tank_count; i++)
+			{
+				uint8_t identifier;
+				sf::Vector2f position;
+				float rotation;
+				uint8_t hitpoints, ammo;
+				float stamina;
+
+				packet >> identifier >> position.x >> position.y >> rotation >> hitpoints >> ammo >> stamina;
+
+				if (m_tank_info.find(identifier) != m_tank_info.end())
+				{
+					m_tank_info[identifier].m_hitpoints = hitpoints;
+					m_tank_info[identifier].m_current_ammo = ammo;
+
+					std::cout << "[SERVER] Tank " << static_cast<int>(identifier)
+						<< " moved to (" << position.x << ", " << position.y << ")" << std::endl;
+				}
+			}
+			break;
+		}
+
 		case Client::PacketType::kPlayerRealtimeChange:
 		{
-			uint8_t action;
+			uint8_t action, identifier;
 			bool actionEnabled;
-			packet >> action >> actionEnabled;
+			packet >> identifier >> action >> actionEnabled;
 
-			uint8_t id = receiving_peer.m_tank_identifiers[0];
-			m_tank_info[id].m_real_time_actions[action] = actionEnabled;
+			if (m_tank_info.find(identifier) != m_tank_info.end())
+			{
+				m_tank_info[identifier].m_real_time_actions[action] = actionEnabled;
+				std::cout << "[SERVER] Tank " << static_cast<int>(identifier)
+					<< " Action " << static_cast<int>(action)
+					<< " = " << (actionEnabled ? "true" : "false") << std::endl;
+			}
 			break;
 		}
 		case Client::PacketType::kKeepAlive:
@@ -455,8 +489,13 @@ void GameServer::UpdateClientState()
 	packet << static_cast<uint8_t>(Server::PacketType::kUpdateClientState);
 	packet << static_cast<uint8_t>(m_tank_info.size());
 
+	std::cout << "[SERVER] Sending UpdateClientState with " << m_tank_info.size() << " tanks" << std::endl;
+
 	for (const auto& pair : m_tank_info)
 	{
+		std::cout << "  [SERVER] Tank " << static_cast<int>(pair.first)
+			<< " at (" << pair.second.m_position.x << ", " << pair.second.m_position.y << ")" << std::endl;
+
 		packet << pair.first;
 		packet << pair.second.m_position.x;
 		packet << pair.second.m_position.y;
