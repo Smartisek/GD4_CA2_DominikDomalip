@@ -13,5 +13,6 @@ public:
 	static int RandomInt(int exclusive_max);
 	static int Length(sf::Vector2f vector);
 	static void CentreOrigin(Animation& animation);
+	static float CalculateScale(float windowWidth, float windowHeight);
 };
 

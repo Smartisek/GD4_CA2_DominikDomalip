@@ -2,6 +2,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <random>
+#include "constants.hpp"
 
 namespace
 {
@@ -69,4 +70,13 @@ void Utility::CentreOrigin(Animation& animation)
 {
     sf::FloatRect bounds = animation.GetLocalBounds();
     animation.setOrigin(sf::Vector2f(std::floor(bounds.position.x + bounds.size.x / 2.f), std::floor(bounds.position.y + bounds.size.y / 2.f)));
+}
+
+float Utility::CalculateScale(float windowWidth, float windowHeight)
+{
+    float scaleX = windowWidth / kReferenceWidth;
+    float scaleY = windowHeight / kReferenceHeight;
+    float scale = std::min(scaleX, scaleY);
+    scale = std::max(kMinimapScale, scale);
+    return scale;
 }

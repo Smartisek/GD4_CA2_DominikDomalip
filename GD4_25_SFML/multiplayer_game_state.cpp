@@ -1,5 +1,5 @@
 ﻿#include "multiplayer_game_state.hpp"
-
+#include "constants.hpp"
 #include "music_player.hpp"
 #include "utility.hpp"
 #include <iostream>
@@ -21,8 +21,15 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
 	, m_broadcast_text(context.fonts->Get(FontID::kMain))
 	, m_failed_connection_text(context.fonts->Get(FontID::kMain))
 {
-	m_broadcast_text.setPosition(sf::Vector2f(m_window.getSize().x / 2.f, 100.f));
-	m_failed_connection_text.setCharacterSize(35);
+	sf::Vector2f windowSize = m_window.getView().getSize();
+
+	float scale = Utility::CalculateScale(windowSize.x, windowSize.y);
+	unsigned int broadcastFontSize = static_cast<unsigned int>(std::max(static_cast<float>(kMinimumFontSize), 24.f * scale));
+	m_broadcast_text.setCharacterSize(broadcastFontSize);
+	m_broadcast_text.setPosition(sf::Vector2f(m_window.getSize().x / 2.f, 100.f * scale));
+
+	unsigned int failedFontSize = static_cast<unsigned int>(std::max(static_cast<float>(kMinimumFontSize), 35.f * scale));
+	m_failed_connection_text.setCharacterSize(failedFontSize);
 	m_failed_connection_text.setFillColor(sf::Color::White);
 	Utility::CentreOrigin(m_failed_connection_text);
 	m_failed_connection_text.setPosition(sf::Vector2f(m_window.getSize().x / 2.f, m_window.getSize().y / 2.f));

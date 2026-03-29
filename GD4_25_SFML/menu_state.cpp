@@ -4,6 +4,7 @@
 #include "utility.hpp"
 #include "menu_options.hpp"
 #include "button.hpp"
+#include "constants.hpp"
 
 MenuState::MenuState(StateStack& stack, Context context) : State(stack, context), m_background_sprite(context.textures->Get(TextureID::kTitleScreen))
 {
@@ -18,9 +19,17 @@ MenuState::MenuState(StateStack& stack, Context context) : State(stack, context)
         windowSize.y / textureSize.y
         });
 
+    //calculate scale 
+    float scale = Utility::CalculateScale(windowSize.x, windowSize.y);
+
+    //button spacing 
+    float buttonSpacing = 50.f * scale;
+    float startY = windowSize.y / 2.f + 250.f * scale;
+
     // HOST GAME
     auto host_button = std::make_shared<gui::Button>(context);
-    host_button->setPosition(sf::Vector2f(windowSize.x / 2.f - 100.f, windowSize.y/2 + 320));
+    host_button->setPosition(sf::Vector2f(windowSize.x / 2.f - 100.f * scale, startY));
+    host_button->setScale(sf::Vector2f(scale, scale));
     host_button->SetText("Host");
     host_button->SetCallback([this]()
         {
@@ -30,7 +39,8 @@ MenuState::MenuState(StateStack& stack, Context context) : State(stack, context)
 
     // JOIN GAME
     auto join_button = std::make_shared<gui::Button>(context);
-    join_button->setPosition(sf::Vector2f(windowSize.x / 2.f - 100.f, windowSize.y / 2 + 370));
+    join_button->setPosition(sf::Vector2f(windowSize.x / 2.f - 100.f * scale, startY + buttonSpacing));
+	join_button->setScale(sf::Vector2f(scale, scale));
     join_button->SetText("Join");
     join_button->SetCallback([this]()
         {
@@ -40,7 +50,8 @@ MenuState::MenuState(StateStack& stack, Context context) : State(stack, context)
 
     // ABOUT
     auto aboutButton = std::make_shared<gui::Button>(context);
-    aboutButton->setPosition(sf::Vector2f(windowSize.x / 2.f - 100.f, windowSize.y / 2 + 420));
+    aboutButton->setPosition(sf::Vector2f(windowSize.x / 2.f - 100.f * scale, startY + buttonSpacing * 2.f));
+	aboutButton->setScale(sf::Vector2f(scale, scale));
     aboutButton->SetText("About");
     aboutButton->SetCallback([this]() {
         RequestStackPush(StateID::kAbout);
@@ -48,7 +59,8 @@ MenuState::MenuState(StateStack& stack, Context context) : State(stack, context)
 
     // SETTINGS 
     auto settings_button = std::make_shared<gui::Button>(context);
-    settings_button->setPosition(sf::Vector2f(windowSize.x / 2.f - 100.f, windowSize.y / 2 + 470));
+    settings_button->setPosition(sf::Vector2f(windowSize.x / 2.f - 100.f * scale, startY + buttonSpacing * 3.f));
+	settings_button->setScale(sf::Vector2f(scale, scale));
     settings_button->SetText("Settings");
     settings_button->SetCallback([this]()
         {
@@ -57,7 +69,8 @@ MenuState::MenuState(StateStack& stack, Context context) : State(stack, context)
 
     // EXIT
     auto exit_button = std::make_shared<gui::Button>(context);
-    exit_button->setPosition(sf::Vector2f(windowSize.x / 2.f - 100.f, windowSize.y / 2 + 520));
+    exit_button->setPosition(sf::Vector2f(windowSize.x / 2.f - 100.f * scale, startY + buttonSpacing * 4.f));
+	exit_button->setScale(sf::Vector2f(scale, scale));
     exit_button->SetText("Exit");
     exit_button->SetCallback([this]()
         {

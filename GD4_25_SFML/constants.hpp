@@ -6,3 +6,8 @@ constexpr auto kMaxSpread = 3;
 constexpr auto kPickupDropChance = 3;
 constexpr auto kMissileRefill = 3;
 constexpr auto kGameOverToMenuPause = 3;
+
+constexpr float kReferenceWidth = 1920.f;
+constexpr float kReferenceHeight = 1080.f;
+constexpr float kMinimapScale = 0.5f;
+constexpr unsigned int kMinimumFontSize = 12;

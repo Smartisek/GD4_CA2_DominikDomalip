@@ -9,6 +9,7 @@
 #include <optional>
 #include <string>
 #include "map_type.hpp"
+#include "constants.hpp"
 
 
 sf::IpAddress GetAddressFromFile()
@@ -54,6 +55,7 @@ TankSelectState::TankSelectState(StateStack& stack, Context context, bool is_hos
         GetContext().socket->connect(GetAddressFromFile(), SERVER_PORT);
     }
     GetContext().socket->setBlocking(false);
+
 	//background setup
     sf::Vector2f viewSize = context.window->getView().getSize();
     sf::Vector2u textSize = m_background_sprite.getTexture().getSize();
@@ -61,27 +63,32 @@ TankSelectState::TankSelectState(StateStack& stack, Context context, bool is_hos
     m_dark_overlay.setSize(viewSize);
     m_dark_overlay.setFillColor(sf::Color(0, 0, 0, 250));
 
+    //scale setup 
+	float scale = Utility::CalculateScale(viewSize.x, viewSize.y);
+
     //instructions 
 	m_instruction_text.setFont(context.fonts->Get(FontID::kMain));
 	m_instruction_text.setString("Select your tank and map!" + std::string("\n") + "Press Ready when done!" + std::string("\n") + "Map will be chosen based on votes.");
-	m_instruction_text.setCharacterSize(20);
+    unsigned int instrFontSize = static_cast<unsigned int>(std::max(static_cast<float>(kMinimumFontSize), 20.f * scale));
+	m_instruction_text.setCharacterSize(instrFontSize);
 	Utility::CentreOrigin(m_instruction_text);
-	m_instruction_text.setPosition(sf::Vector2f(viewSize.x / 2.f - 70.f, viewSize.y - 1000.f));
+    m_instruction_text.setPosition(sf::Vector2f(viewSize.x / 2.f, viewSize.y - 1000.f * scale));
 
     //title
     m_title_text.setFont(context.fonts->Get(FontID::kMain));
+    unsigned int titleFontSize = static_cast<unsigned int>(std::max(static_cast<float>(kMinimumFontSize), 50.f * scale));
     m_title_text.setString("Multiplayer Lobby");
-    m_title_text.setCharacterSize(50);
+    m_title_text.setCharacterSize(titleFontSize);
     Utility::CentreOrigin(m_title_text);
-    m_title_text.setPosition(sf::Vector2f(viewSize.x / 2.f - 70.f, viewSize.y - 850.f));
+    m_title_text.setPosition(sf::Vector2f(viewSize.x / 2.f, viewSize.y - 850.f * scale));
     
     //for getting the data 
     const std::vector<TankData> tankData = InitializeTankData();
 
     // Define layout variables
     float startX = viewSize.x * 0.15f; 
-    float startY = 150.f;   
-    float gapY = 280.f;                
+    float startY = 50.f * scale;
+    float gapY = 250.f * scale;
 
     for (int i = 0; i < static_cast<int>(TankType::kTankCount); ++i)
     {
@@ -94,12 +101,14 @@ TankSelectState::TankSelectState(StateStack& stack, Context context, bool is_hos
         // button->setScale(0.8f, 0.8f); 
         float currentY = startY + (i * gapY);
         button->setPosition(sf::Vector2f(startX, currentY));
+        button->setScale(sf::Vector2f(scale, scale));
         button->SetCallback([this, i]() { SendTankSelection(static_cast<uint8_t>(i)); });
         m_gui_container.Pack(button);
 
         //stats logic text
         sf::Text statText(context.fonts->Get(FontID::kMain));
-        statText.setCharacterSize(20);
+        unsigned int statFontSize = static_cast<unsigned int>(std::max(static_cast<float>(kMinimumFontSize), 20.f * scale));
+        statText.setCharacterSize(statFontSize);
         statText.setFillColor(sf::Color::White);
 
         // format fot printign the stats
@@ -111,7 +120,7 @@ TankSelectState::TankSelectState(StateStack& stack, Context context, bool is_hos
 
         statText.setString(ss.str());
 
-        statText.setPosition(sf::Vector2f(startX + 200.f, currentY + 20.f ));
+        statText.setPosition(sf::Vector2f(startX + 200.f * scale, currentY + 20.f * scale));
 
         //populate the vector texts
         m_stat_texts.push_back(statText);
@@ -119,27 +128,28 @@ TankSelectState::TankSelectState(StateStack& stack, Context context, bool is_hos
 
     // Map setup
     const std::vector<MapData> mapData = InitializeMapData();
-    float mapX = viewSize.x * 0.65f;
-    float mapY = 100.f;
+    float mapX = (viewSize.x - 100)* 0.65f;
+    float mapY = 20.f * scale;
 
     for (int i = 0; i < static_cast<int>(MapType::kTypeCount); ++i)
     {
         auto button = std::make_shared<gui::Button>(context);
         button->SetCustomIcon(context.textures->Get(TextureID::kLandscape), mapData[i].m_theme_icon);
         button->setPosition(sf::Vector2f(mapX, mapY));
-        button->setScale({ 6.f, 6.f }); 
+        button->setScale({ std::max(kMinimapScale, 6.f * scale), std::max(kMinimapScale, 6.f * scale) });
         button->SetCallback([this, i]()
             {
                 SendMapSelection(static_cast<uint8_t>(i));
                 std::cout << "[CLIENT] Voted for map " << i << std::endl;
             });
         m_gui_container.Pack(button);
-        mapY += 150.f; 
+        mapY += 150.f * scale;
     }
 
     auto readyBtn = std::make_shared<gui::Button>(context);
     readyBtn->SetText("Ready Up");
-    readyBtn->setPosition(sf::Vector2f(viewSize.x / 2.f - 100.f, viewSize.y - 150.f));
+    readyBtn->setPosition(sf::Vector2f(viewSize.x / 2.f - 100.f * scale, viewSize.y - 150.f * scale));
+	readyBtn->setScale(sf::Vector2f(scale, scale));
     readyBtn->SetCallback([this]() { SendReadyToggle(); });
     m_gui_container.Pack(readyBtn);
 }
