@@ -353,7 +353,7 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
 					//server should be keeping autorative data like hitpoints 
 				}
 			}
-
+			break;
 		}
 
 		case Client::PacketType::kPlayerRealtimeChange:
