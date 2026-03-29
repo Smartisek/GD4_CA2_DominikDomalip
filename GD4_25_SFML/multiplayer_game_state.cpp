@@ -315,11 +315,16 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 
 				if (is_local)
 				{
-					//only need to sync hitpoint and ammo for local player
+					//sync positions with server 
+					// little smoothing instead of snapping positions 
+					sf::Vector2f correctionPos = tank->getPosition() + (position - tank->getPosition()) * 0.1f;
+					tank->setPosition(correctionPos);
+					tank->setRotation(sf::degrees(rotation));
+
+					//sync stats
 					tank->SetHitpoints(hitpoints);
 					tank->SetAmmo(ammo);
 					tank->SetMissileAmmo(missile_ammo);
-					//stamina client-side handle it 
 				}
 				else
 				{
