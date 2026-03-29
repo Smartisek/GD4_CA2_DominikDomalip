@@ -127,7 +127,7 @@ bool MultiplayerGameState::Update(sf::Time dt)
 			}
 
 			//position updates
-			if (m_tick_clock.getElapsedTime() > sf::seconds(1.f / 20.f))
+			if (m_tick_clock.getElapsedTime() > sf::seconds(1.f / kNetworkUpdateRate))
 			{
 				sf::Packet position_update_packet;
 				position_update_packet << static_cast<uint8_t>(Client::PacketType::kStateUpdate);
@@ -137,6 +137,9 @@ bool MultiplayerGameState::Update(sf::Time dt)
 				{
 					if (Tank* tank = m_world.GetTank(identifier))
 					{
+						std::cout << "[CLIENT] Sending StateUpdate for tank " << static_cast<int>(identifier)
+							<< " at (" << tank->getPosition().x << ", " << tank->getPosition().y << ")" << std::endl;
+
 						position_update_packet << identifier
 							<< tank->getPosition().x
 							<< tank->getPosition().y
@@ -263,6 +266,8 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 			uint8_t tank_count;
 			packet >> tank_count;
 
+			std::cout << "[CLIENT] Received UpdateClientState with " << static_cast<int>(tank_count) << " tanks" << std::endl;
+
 			for (uint8_t i = 0; i < tank_count; i++)
 			{
 				uint8_t identifier, hitpoints, ammo;
@@ -270,8 +275,16 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 				float rotation;
 
 				packet >> identifier >> position.x >> position.y >> rotation >> hitpoints >> ammo;
+
+				std::cout << "[CLIENT] Tank " << static_cast<int>(identifier)
+					<< " at (" << position.x << ", " << position.y << ")" << std::endl;
+
 				Tank* tank = m_world.GetTank(identifier);
-				if (!tank) continue;
+				if (!tank)
+				{
+					std::cout << "[CLIENT] Tank " << static_cast<int>(identifier) << " not found!" << std::endl;
+					continue;
+				}
 
 				//check if this is clients own tank
 				bool is_local = (identifier == *GetContext().local_id);

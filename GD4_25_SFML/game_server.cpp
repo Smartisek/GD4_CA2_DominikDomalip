@@ -455,8 +455,13 @@ void GameServer::UpdateClientState()
 	packet << static_cast<uint8_t>(Server::PacketType::kUpdateClientState);
 	packet << static_cast<uint8_t>(m_tank_info.size());
 
+	std::cout << "[SERVER] Sending UpdateClientState with " << m_tank_info.size() << " tanks" << std::endl;
+
 	for (const auto& pair : m_tank_info)
 	{
+		std::cout << "  [SERVER] Tank " << static_cast<int>(pair.first)
+			<< " at (" << pair.second.m_position.x << ", " << pair.second.m_position.y << ")" << std::endl;
+
 		packet << pair.first;
 		packet << pair.second.m_position.x;
 		packet << pair.second.m_position.y;
