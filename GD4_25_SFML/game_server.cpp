@@ -108,7 +108,7 @@ void GameServer::ExecutionThread()
 
 void GameServer::Tick()
 {
-	const float dt = kServerPhysicsRate;
+	const float dt = 1.f / kServerPhysicsRate;
 	float damping = 0.6f;
 	float frictionFactor = std::exp(-damping * dt * 10.0f);
 
