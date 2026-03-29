@@ -73,7 +73,7 @@ bool MultiplayerGameState::Update(sf::Time dt)
 	{
 		if (!m_active_state) { DisableAllRealtimeActions(true); }
 
-		if (m_scene_initialized)  // ← GUARD ALL WORLD ACCESS
+		if (m_scene_initialized)
 		{
 			m_world.Update(dt);
 
@@ -129,6 +129,30 @@ bool MultiplayerGameState::Update(sf::Time dt)
 			//position updates
 			if (m_tick_clock.getElapsedTime() > sf::seconds(1.f / kNetworkUpdateRate))
 			{
+				//send realtime input updates for each local player
+				for (uint8_t identifier : m_local_player_identifiers)
+				{
+					for (int i = 0; i < static_cast<int>(Action::kActionCount); ++i)
+					{
+						Action action = static_cast<Action>(i);
+
+						// handle the realtime actions like moving
+						if (IsRealtimeAction(action))
+						{
+							sf::Keyboard::Scancode boundKey = GetContext().keys1->GetAssignedKey(action);
+							bool isPressed = sf::Keyboard::isKeyPressed(boundKey);
+
+							sf::Packet input_packet;
+							input_packet << static_cast<uint8_t>(Client::PacketType::kPlayerRealtimeChange);
+							input_packet << identifier;
+							input_packet << static_cast<uint8_t>(action);
+							input_packet << isPressed;
+							GetContext().socket->send(input_packet);
+						}
+					}
+				}
+
+				//send those positions updates for each player 's tank to the server so it can update the authoritative state and then send it back to all clients
 				sf::Packet position_update_packet;
 				position_update_packet << static_cast<uint8_t>(Client::PacketType::kStateUpdate);
 				position_update_packet << static_cast<uint8_t>(m_local_player_identifiers.size());
@@ -387,3 +411,4 @@ void MultiplayerGameState::UpdateBroadcastMessage(sf::Time elapsed_time)
 		}
 	}
 }
+

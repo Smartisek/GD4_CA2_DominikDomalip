@@ -90,7 +90,7 @@ bool IsRealtimeAction(Action action)
 	case Action::kMoveRight:
 	case Action::kMoveDown:
 	case Action::kMoveUp:
-	case Action::kBulletFire:
+	case Action::kSprint:
 		return true;
 
 	default:
