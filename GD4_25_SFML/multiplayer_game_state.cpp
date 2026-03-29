@@ -270,11 +270,11 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 
 			for (uint8_t i = 0; i < tank_count; i++)
 			{
-				uint8_t identifier, hitpoints, ammo;
+				uint8_t identifier, hitpoints, ammo, missile_ammo;
 				sf::Vector2f position;
-				float rotation;
+				float rotation, stamina;
 
-				packet >> identifier >> position.x >> position.y >> rotation >> hitpoints >> ammo;
+				packet >> identifier >> position.x >> position.y >> rotation >> hitpoints >> ammo >> missile_ammo >> stamina;
 
 				std::cout << "[CLIENT] Tank " << static_cast<int>(identifier)
 					<< " at (" << position.x << ", " << position.y << ")" << std::endl;
@@ -294,6 +294,8 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 					//only need to sync hitpoint and ammo for local player
 					tank->SetHitpoints(hitpoints);
 					tank->SetAmmo(ammo);
+					tank->SetMissileAmmo(missile_ammo);
+					//stamina client-side handle it 
 				}
 				else
 				{
@@ -302,6 +304,9 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 					tank->setPosition(lerpPos);
 					tank->setRotation(sf::degrees(rotation));
 					tank->SetHitpoints(hitpoints);
+					tank->SetAmmo(ammo);
+					tank->SetMissileAmmo(missile_ammo);
+					tank->SetStamina(stamina);
 				}
 			}
 			break;

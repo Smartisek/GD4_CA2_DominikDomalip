@@ -471,3 +471,13 @@ void Tank::SetAmmo(int amount)
 	int maxAmmo = Table[static_cast<int>(m_type)].m_ammo_amount;
 	m_current_ammo = std::clamp(amount, 0, maxAmmo);
 }
+
+void Tank::SetMissileAmmo(uint8_t ammo) 
+{
+	m_missile_ammo = ammo; 
+}
+
+void Tank::SetStamina(float stamina)
+{
+	m_stamina = stamina;
+}
