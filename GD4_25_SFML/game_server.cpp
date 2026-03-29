@@ -327,6 +327,35 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
 			break;
 		}
 
+		case Client::PacketType::kStateUpdate:
+		{
+			uint8_t tank_count;
+			packet >> tank_count;
+
+			std::cout << "[SERVER] Received StateUpdate with " << static_cast<int>(tank_count) << " tanks" << std::endl;
+
+			for (uint8_t i = 0; i < tank_count; i++)
+			{
+				uint8_t identifier;
+				sf::Vector2f position;
+				float rotation;
+				uint8_t hitpoints, ammo;
+				float stamina;
+
+				packet >> identifier >> position.x >> position.y >> rotation >> hitpoints >> ammo >> stamina;
+				std::cout << "[SERVER] Tank " << static_cast<int>(identifier)
+					<< " moved to (" << position.x << ", " << position.y << ")" << std::endl;
+
+				if (m_tank_info.find(identifier) != m_tank_info.end())
+				{
+					m_tank_info[identifier].m_position = position;
+					m_tank_info[identifier].m_rotation = rotation;
+					//server should be keeping autorative data like hitpoints 
+				}
+			}
+
+		}
+
 		case Client::PacketType::kPlayerRealtimeChange:
 		{
 			uint8_t action;
