@@ -316,6 +316,31 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 			}
 			break;
 		}
+
+		case Server::PacketType::kPlayerEvent:
+		{
+			uint8_t tank_identifier;
+			uint8_t action;
+			float rotation;
+			packet >> tank_identifier >> action >> rotation;
+
+			std::cout << "[CLIENT] Player Event - Tank " << static_cast<int>(tank_identifier)
+				<< " Action: " << static_cast<int>(action) << std::endl;
+
+			auto itr = m_players.find(tank_identifier);
+			if (itr != m_players.end())
+			{
+				if (Tank* tank = m_world.GetTank(tank_identifier))
+				{
+					tank->setRotation(sf::degrees(rotation));
+					if (action == static_cast<uint8_t>(Action::kBulletFire))
+					{
+						tank->Fire();
+					}
+				}
+			}
+			break;
+		}
 		//will need to add more packet types for things like events, pickups etc
 		default:
 			break;

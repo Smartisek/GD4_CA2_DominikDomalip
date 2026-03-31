@@ -110,7 +110,7 @@ void GameServer::Tick()
 {
 	const float dt = 1.f / kServerPhysicsRate;
 	float damping = 0.6f;
-	float frictionFactor = std::exp(-damping * dt * 10.0f);
+	float frictionFactor = std::exp(-damping * dt * 2.0f);
 
 	//Server will be the authoritative for the game, not clients, so i update the game logic physics here and send it to clients in the next tick
 	for (auto& pair : m_tank_info)
@@ -140,7 +140,7 @@ void GameServer::Tick()
 		if (acceleration.x != 0.f || acceleration.y != 0.f) 
 		{
 			float len = std::sqrt(acceleration.x * acceleration.x + acceleration.y * acceleration.y);
-			info.m_velocity += (acceleration / len) * currentMaxSpeed * dt * 10.0f; 
+			info.m_velocity += (acceleration / len) * currentMaxSpeed * dt * 15.0f; 
 		}
 
 		//apply the friction 
@@ -376,6 +376,15 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
 			// Just update the last packet time, do nothing else
 			break;
 		}
+
+		case Client::PacketType::kPlayerEvent:
+		{
+			uint8_t tank_identifier;
+			uint8_t action;
+			packet >> tank_identifier >> action;
+			NotifyPlayerEvent(tank_identifier, action);
+			break;
+		}
 	}
 }
 
@@ -515,7 +524,16 @@ void GameServer::NotifyPlayerRealtimeChange(uint8_t tank_identifier, uint8_t act
 
 void GameServer::NotifyPlayerEvent(uint8_t tank_identifier, int8_t action)
 {
+	//this will tell the server that a player has performed an action like shooting or dashing, so the server can do the necessary logic and then broadcast it to other clients
+	sf::Packet packet;
+	std::cout << "Server: Notify Player Event" << +tank_identifier << +action << std::endl;
 
+	packet << static_cast<uint8_t>(Server::PacketType::kPlayerEvent);
+	packet << tank_identifier;
+	packet << action;
+	packet << m_tank_info[tank_identifier].m_rotation;
+
+	SendToAll(packet);
 }
 
 void GameServer::CheckIfMapVotingDone()
