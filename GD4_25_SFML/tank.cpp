@@ -479,5 +479,6 @@ void Tank::SetMissileAmmo(uint8_t ammo)
 
 void Tank::SetStamina(float stamina)
 {
-	m_stamina = stamina;
+	float ratio = std::clamp(stamina, 0.f, 1.f);
+	m_stamina = ratio * GetMaxStamina();
 }

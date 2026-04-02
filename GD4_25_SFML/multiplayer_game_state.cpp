@@ -141,12 +141,13 @@ bool MultiplayerGameState::Update(sf::Time dt)
 							<< " at (" << tank->getPosition().x << ", " << tank->getPosition().y << ")" << std::endl;
 
 						position_update_packet << identifier
-							<< tank->getPosition().x
-							<< tank->getPosition().y
-							<< tank->getRotation().asDegrees()
+							<< static_cast<float>(tank->getPosition().x)
+							<< static_cast<float>(tank->getPosition().y)
+							<< static_cast<float>(tank->getRotation().asDegrees())
 							<< static_cast<uint8_t>(tank->GetHitPoints())
 							<< static_cast<uint8_t>(tank->GetAmmoCount())
-							<< tank->GetStaminaRatio();
+							<< static_cast<uint8_t>(tank->GetMissileAmmo())
+							<< static_cast<float>(tank->GetStaminaRatio());
 					}
 				}
 				GetContext().socket->send(position_update_packet);
@@ -293,14 +294,9 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 				{
 					//sync positions with server 
 					// little smoothing instead of snapping positions 
-					sf::Vector2f correctionPos = tank->getPosition() + (position - tank->getPosition());
+					sf::Vector2f correctionPos = tank->getPosition() + (position - tank->getPosition()) * kNetworkInterpolation;
 					tank->setPosition(correctionPos);
 					tank->setRotation(sf::degrees(rotation));
-
-					//sync stats
-					tank->SetHitpoints(hitpoints);
-					tank->SetAmmo(ammo);
-					tank->SetMissileAmmo(missile_ammo);
 				}
 				else
 				{
