@@ -339,14 +339,22 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
 				uint8_t identifier;
 				sf::Vector2f position;
 				float rotation;
+				uint8_t hitpoints, ammo, missileAmmo;
+				float stamina;
 
-				packet >> identifier >> position.x >> position.y >> rotation;
+				packet >> identifier >> position.x >> position.y >> rotation >> hitpoints >> ammo >> missileAmmo >> stamina;
 
 				if (m_tank_info.find(identifier) != m_tank_info.end())
 				{
 					m_tank_info[identifier].m_position.x = position.x;
 					m_tank_info[identifier].m_position.y = position.y;
 					m_tank_info[identifier].m_rotation = rotation;
+
+					//trust clients values? for now but probably should not be in real game not good idea 
+					m_tank_info[identifier].m_hitpoints = hitpoints;
+					m_tank_info[identifier].m_current_ammo = ammo;
+					m_tank_info[identifier].m_missile_ammo = missileAmmo;
+					m_tank_info[identifier].stamina = stamina;
 				}
 			}
 			break;

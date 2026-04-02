@@ -463,6 +463,7 @@ void Tank::SetIdentifier(int identifier)
 void Tank::SetHitpoints(int points)
 {
 	m_hitpoints = std::clamp(points, 0, m_max_hitpoints);
+	m_health_bar_foreground.setSize(sf::Vector2f(points * 2.f, 10.f));
 }
 
 void Tank::SetAmmo(int amount)
@@ -470,6 +471,8 @@ void Tank::SetAmmo(int amount)
 	// Clamp ammo between 0 and max, same logic as Reload
 	int maxAmmo = Table[static_cast<int>(m_type)].m_ammo_amount;
 	m_current_ammo = std::clamp(amount, 0, maxAmmo);
+	// update the ammo text to reflect the new ammo count
+	m_ammo_text.setString(std::to_string(m_current_ammo));
 }
 
 void Tank::SetMissileAmmo(uint8_t ammo) 
