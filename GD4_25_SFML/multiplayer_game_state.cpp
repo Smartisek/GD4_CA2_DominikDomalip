@@ -299,7 +299,10 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 
 					//sync stats
 					tank->SetHitpoints(hitpoints);
-					tank->SetAmmo(ammo);
+					if (ammo > tank->GetAmmoCount())
+					{
+						tank->SetAmmo(ammo);
+					}
 					tank->SetMissileAmmo(missile_ammo);
 				}
 				else
