@@ -505,14 +505,14 @@ void GameServer::UpdateClientState()
 		std::cout << "  [SERVER] Tank " << static_cast<int>(pair.first)
 			<< " at (" << pair.second.m_position.x << ", " << pair.second.m_position.y << ")" << std::endl;
 
-		packet << pair.first;
-		packet << pair.second.m_position.x;
-		packet << pair.second.m_position.y;
-		packet << pair.second.m_rotation;
-		packet << pair.second.m_hitpoints;
-		packet << pair.second.m_current_ammo;
-		packet << pair.second.m_missile_ammo;
-		packet << pair.second.stamina;
+		packet << static_cast<uint8_t>(pair.first);
+		packet << static_cast<float>(pair.second.m_position.x);
+		packet << static_cast<float>(pair.second.m_position.y);
+		packet << static_cast<float>(pair.second.m_rotation);
+		packet << static_cast<uint8_t>(pair.second.m_hitpoints);
+		packet << static_cast<uint8_t>(pair.second.m_current_ammo);
+		packet << static_cast<uint8_t>(pair.second.m_missile_ammo);
+		packet << static_cast<float>(pair.second.stamina);
 	}
 	SendToAll(packet);
 }
