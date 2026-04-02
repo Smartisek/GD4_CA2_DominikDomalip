@@ -297,11 +297,6 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 					sf::Vector2f correctionPos = tank->getPosition() + (position - tank->getPosition());
 					tank->setPosition(correctionPos);
 					tank->setRotation(sf::degrees(rotation));
-
-					//sync stats
-					tank->SetHitpoints(hitpoints);
-					tank->SetAmmo(ammo);
-					tank->SetMissileAmmo(missile_ammo);
 				}
 				else
 				{
