@@ -26,6 +26,7 @@ protected:
 	void UpdateStamina(sf::Time dt);
 	int m_hitpoints;
 	float m_stamina;
+	float GetMaxStamina() const;
 
 private:
 	sf::Vector2f m_velocity;

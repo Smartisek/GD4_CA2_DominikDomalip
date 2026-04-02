@@ -114,3 +114,8 @@ void Entity::UpdateStamina(sf::Time dt)
 
 	m_stamina = std::clamp(m_stamina, 0.f, m_max_stamina);
 }
+
+float Entity::GetMaxStamina() const
+{
+	return m_max_stamina;
+}
