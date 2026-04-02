@@ -294,7 +294,7 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 				{
 					//sync positions with server 
 					// little smoothing instead of snapping positions 
-					sf::Vector2f correctionPos = tank->getPosition() + (position - tank->getPosition());
+					sf::Vector2f correctionPos = tank->getPosition() + (position - tank->getPosition()) * kNetworkInterpolation;
 					tank->setPosition(correctionPos);
 					tank->setRotation(sf::degrees(rotation));
 				}
