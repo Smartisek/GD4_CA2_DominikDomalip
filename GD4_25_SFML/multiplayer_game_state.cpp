@@ -141,12 +141,9 @@ bool MultiplayerGameState::Update(sf::Time dt)
 							<< " at (" << tank->getPosition().x << ", " << tank->getPosition().y << ")" << std::endl;
 
 						position_update_packet << identifier
-							<< tank->getPosition().x
-							<< tank->getPosition().y
-							<< tank->getRotation().asDegrees()
-							<< static_cast<uint8_t>(tank->GetHitPoints())
-							<< static_cast<uint8_t>(tank->GetAmmoCount())
-							<< tank->GetStaminaRatio();
+							<< static_cast<float>(tank->getPosition().x)
+							<< static_cast<float>(tank->getPosition().y)
+							<< static_cast<float>(tank->getRotation().asDegrees());
 					}
 				}
 				GetContext().socket->send(position_update_packet);

@@ -339,18 +339,14 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
 				uint8_t identifier;
 				sf::Vector2f position;
 				float rotation;
-				uint8_t hitpoints, ammo;
-				float stamina;
 
-				packet >> identifier >> position.x >> position.y >> rotation >> hitpoints >> ammo >> stamina;
+				packet >> identifier >> position.x >> position.y >> rotation;
 
 				if (m_tank_info.find(identifier) != m_tank_info.end())
 				{
-					m_tank_info[identifier].m_hitpoints = hitpoints;
-					m_tank_info[identifier].m_current_ammo = ammo;
-
-					std::cout << "[SERVER] Tank " << static_cast<int>(identifier)
-						<< " moved to (" << position.x << ", " << position.y << ")" << std::endl;
+					m_tank_info[identifier].m_position.x = position.x;
+					m_tank_info[identifier].m_position.y = position.y;
+					m_tank_info[identifier].m_rotation = rotation;
 				}
 			}
 			break;
