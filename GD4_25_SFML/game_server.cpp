@@ -157,6 +157,18 @@ void GameServer::Tick()
 		info.m_position.x = std::clamp(info.m_position.x, 40.f, m_battlefield_size.x - 40.f);
 		info.m_position.y = std::clamp(info.m_position.y, 40.f, m_battlefield_size.y - 40.f);
 	}
+
+	//pickups spawning handle 
+	if (m_game_started)
+	{
+		m_pickup_spawn_timer -= sf::seconds(dt);
+		if (m_pickup_spawn_timer <= sf::Time::Zero && m_active_pickups.size() < kMaxPickups)
+		{
+			SpawnPickup();
+			m_pickup_spawn_timer = sf::seconds(5.f + (std::rand() % 10));
+		}
+	}
+	HandlePickupCollisions();
 }
 
 sf::Time GameServer::Now() const
@@ -628,4 +640,94 @@ void GameServer::CheckIfMapVotingDone()
 	}
 
 	SendToAll(statePacket);
+}
+
+void GameServer::SpawnPickup() {
+	PickupInfo pickup;
+	pickup.m_type = std::rand() % static_cast<int>(PickupType::kTypeCount);
+	pickup.m_pikcup_identifier = m_pickup_id_counter++;
+
+	float margin = 100.f; 
+	pickup.m_position.x = margin + (std::rand() % (int)(m_battlefield_size.x - 2 * margin));
+	pickup.m_position.y = margin + (std::rand() % (int)(m_battlefield_size.y - 2 * margin));
+
+	m_active_pickups.push_back(pickup);
+
+	//inform clients to spawn this pickups 
+	sf::Packet packet;
+	packet << static_cast<uint8_t>(Server::PacketType::kSpawnPickup);
+	packet << pickup.m_type << pickup.m_position.x << pickup.m_position.y << pickup.m_pikcup_identifier;
+	SendToAll(packet);
+}
+
+void GameServer::HandlePickupCollisions()
+{
+	for (auto& tankPair : m_tank_info)
+	{
+		uint8_t tankID = tankPair.first;
+		TankInfo& tank = tankPair.second;
+		//server will check what type of pickup it was and will send the game action connected with that type of pickup 
+		const TankData& stats = TankTable[tank.m_tank_type];
+
+		for (auto it = m_active_pickups.begin(); it != m_active_pickups.end();)
+		{
+			//distance checks
+			float dx = tank.m_position.x - it->m_position.x;
+			float dy = tank.m_position.y - it->m_position.y;
+			float distSqrt = dx * dx + dy * dy; //pythagoras
+
+			const float pickupRadius = 80.f;
+			if (distSqrt < pickupRadius * pickupRadius)
+			{
+				uint8_t gameActionType;
+				uint8_t amount;
+
+				switch (static_cast<PickupType>(it->m_type))
+				{
+					case PickupType::kHealthRefill:
+					{
+						uint8_t newHP = static_cast<uint8_t>(std::min<int>(stats.m_hitpoints, static_cast<int>(tank.m_hitpoints + 30)));
+						amount = static_cast<uint8_t>(newHP - tank.m_hitpoints);
+						if (amount == 0) { ++it; continue; }
+						tank.m_hitpoints = newHP;
+						gameActionType = GameActions::kTankHealed;
+						break;
+					}
+
+					case PickupType::kBulletRefill:
+					{
+						uint8_t newAmmo = static_cast<uint8_t>(std::min<int>(stats.m_ammo_amount, static_cast<int>(tank.m_current_ammo + 5)));
+						amount = static_cast<uint8_t>(newAmmo - tank.m_current_ammo);
+						if (amount == 0) { ++it; continue; }
+						tank.m_current_ammo = newAmmo;
+						gameActionType = GameActions::kAmmoRefilled;
+						break;
+					}
+
+					case PickupType::kMissile:
+					{
+						tank.m_missile_ammo += 1;
+						gameActionType = GameActions::kMissileRefilled;
+						amount = 1;
+						break;
+					}
+				}
+
+				//notify clients now 
+				sf::Packet packet;
+				packet << static_cast<uint8_t>(Server::PacketType::kGameEvent);
+				packet << static_cast<uint8_t>(gameActionType);
+				packet << tankID;
+				packet << amount;
+				packet << it->m_pikcup_identifier;
+				SendToAll(packet);
+
+				it = m_active_pickups.erase(it);
+			}
+			else
+			{
+				it++;
+			}
+		}
+	}
 }

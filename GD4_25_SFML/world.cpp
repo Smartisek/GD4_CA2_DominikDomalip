@@ -329,16 +329,19 @@ void World::HandleCollisions() {
 		// 3 tank and pickup
 		else if (MatchesCategories(pair, ReceiverCategories::kPlayerTank, ReceiverCategories::kPickup))
 		{
-			auto& tank = static_cast<Tank&>(*pair.first);
-			auto& pickup = static_cast<Pickup&>(*pair.second);
+			if (!m_networked_world)
+			{
+				auto& tank = static_cast<Tank&>(*pair.first);
+				auto& pickup = static_cast<Pickup&>(*pair.second);
 
-			pickup.Apply(tank);
-			pickup.Destroy();
+				pickup.Apply(tank);
+				pickup.Destroy();
 
-			CreatePopup(tank.GetWorldPosition(), pickup.GetPopupType(), pickup.GetPopupText());
+				CreatePopup(tank.GetWorldPosition(), pickup.GetPopupType(), pickup.GetPopupText());
 
-			tank.PlayLocalSound(m_command_queue, SoundEffect::kPickup);
-			if(!m_networked_world) m_active_pickups--;
+				tank.PlayLocalSound(m_command_queue, SoundEffect::kPickup);
+				m_active_pickups--;
+			}
 		}
 		// 4. tank and obstaccles
 		else if (MatchesCategories(pair, ReceiverCategories::kPlayerTank, ReceiverCategories::kObstacle))
@@ -790,4 +793,23 @@ bool World::PollGameAction(GameActions::Action& out)
 void World::InitializeScene()
 {
 	BuildScene();
+}
+
+void World::CreatePickup(uint8_t type, sf::Vector2f position, uint16_t id)
+{
+	std::unique_ptr<Pickup> pickup(new Pickup(static_cast<PickupType>(type), m_textures));
+	pickup->setPosition(position);
+
+	m_network_pickups[id] = pickup.get();
+	m_scene_layers[static_cast<int>(SceneLayers::kLowerGround)]->AttachChild(std::move(pickup));
+}
+
+void World::RemovePickup(uint16_t id)
+{
+	auto it = m_network_pickups.find(id);
+	if (it != m_network_pickups.end())
+	{
+		it->second->Destroy();
+		m_network_pickups.erase(it);
+	}
 }

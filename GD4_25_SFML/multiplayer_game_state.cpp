@@ -337,6 +337,47 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 			}
 			break;
 		}
+
+		case Server::PacketType::kSpawnPickup:
+		{
+			uint8_t type;
+			sf::Vector2f position;
+			uint16_t id;
+			packet >> type >> position.x >> position.y >> id;
+			m_world.CreatePickup(type, position, id);
+			break;
+		}
+
+		case Server::PacketType::kGameEvent:
+		{
+			uint8_t actionType, tankID, amount;
+			uint16_t pickupID;
+			packet >> actionType >> tankID >> amount >> pickupID;
+
+			//remove that pickup from world 
+			m_world.RemovePickup(pickupID);
+
+			if (Tank* tank = m_world.GetTank(tankID))
+			{
+				//do visual feedback for yourself and other players and apply the effect of the pickup
+				if (actionType == GameActions::kTankHealed)
+				{
+					tank->SetHitpoints(tank->GetHitPoints() + amount);
+					m_world.CreatePopup(tank->GetWorldPosition(), PopupType::kHealth, "+" + std::to_string(amount));
+				}
+				else if (actionType == GameActions::kAmmoRefilled)
+				{
+					tank->SetAmmo(tank->GetAmmoCount() + amount);
+					m_world.CreatePopup(tank->GetWorldPosition(), PopupType::kAmmo, "+" + std::to_string(amount));
+				}
+				else if (actionType == GameActions::kMissileRefilled)
+				{
+					tank->SetMissileAmmo(static_cast<uint8_t>(tank->GetMissileAmmo() + amount));
+					m_world.CreatePopup(tank->GetWorldPosition(), PopupType::kAmmo, "+" + std::to_string(amount));
+				}
+				tank->PlayLocalSound(m_world.GetCommandQueue(), SoundEffect::kPickup);
+			}
+		}
 		//will need to add more packet types for things like events, pickups etc
 		default:
 			break;
