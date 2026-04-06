@@ -49,6 +49,13 @@ private:
 		sf::Vector2f m_velocity;
 	};
 
+	struct PickupInfo
+	{
+		uint8_t m_type;
+		sf::Vector2f m_position;
+		uint16_t m_pikcup_identifier;
+	};
+
 	typedef std::unique_ptr<RemotePeer> PeerPtr;
 
 	// Server Loop
@@ -74,6 +81,10 @@ private:
 	void BroadcastLobbyUpdate();
 	void CheckIfMapVotingDone();
 
+	//pikcups functions
+	void SpawnPickup();
+	void HandlePickupCollisions();
+
 private:
 	//networking variables 
 	sf::Clock m_clock;
@@ -95,6 +106,11 @@ private:
 	std::map<uint8_t, TankInfo> m_tank_info;
 	std::vector<PeerPtr> m_peers;
 	std::thread m_thread;
+
+	//pickups
+	std::vector<PickupInfo> m_active_pickups;
+	uint16_t m_pickup_id_counter = 0;
+	sf::Time m_pickup_spawn_timer;
 
 };
 

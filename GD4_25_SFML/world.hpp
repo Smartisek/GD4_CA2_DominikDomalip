@@ -11,6 +11,7 @@
 #include <algorithm>
 #include "popup_type.hpp"
 #include "network_node.hpp"
+#include "pickup.hpp"
 
 class World
 {
@@ -30,6 +31,11 @@ public:
 	void InitializeScene();
 
 	bool PollGameAction(GameActions::Action& out);
+	//spawning pickups might not be ideal as public 
+	void CreatePickup(uint8_t type, sf::Vector2f position, uint16_t id);
+	void RemovePickup(uint16_t id);
+	void CreatePopup(sf::Vector2f position, PopupType type, const std::string& text);
+
 private:
 	void LoadTextures();
 	void BuildScene();
@@ -44,8 +50,6 @@ private:
 	void SpawnRandomPickup();
 	void CheckOutOfBounds();
 	void GuideMissile();
-	void CreatePopup(sf::Vector2f position, PopupType type, const std::string& text);
-
 private:
 	sf::RenderTarget& m_target;
 	sf::RenderTexture m_scene_texture;
@@ -72,5 +76,7 @@ private:
 	std::vector<Tank*> m_player_tanks;
 	NetworkNode* m_network_node;
 	bool m_networked_world;
+
+	std::map<uint16_t, Pickup*> m_network_pickups;
 };
 

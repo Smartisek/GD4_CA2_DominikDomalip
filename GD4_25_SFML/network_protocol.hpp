@@ -51,7 +51,8 @@ namespace GameActions
 		kObstacleDestroyed,
 		kEntityDamaged, //tank, obstacle and turret are entities , so we can use this for all of them, just send the ID and the new HP
 		kTankHealed,
-		kAmmoRefilled
+		kAmmoRefilled,
+		kMissileRefilled
 	};
 
 	struct Action
