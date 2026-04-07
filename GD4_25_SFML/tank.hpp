@@ -6,8 +6,7 @@
 #include "tank_type.hpp"
 #include "animation.hpp"
 #include "emitter_node.hpp"
-
-
+#include <array>
 
 class Tank : public Entity
 {
@@ -38,7 +37,7 @@ public:
 	void CollectMissile(unsigned int amount);
 	int GetMissileAmmo() const;
 
-	//Network related
+	//Network related 
 	int GetIdentifier() const;
 	void SetIdentifier(int identifier);
 	void SetHitpoints(int points);
@@ -55,10 +54,13 @@ private:
 	void UpdateStaminaBar();
 	void UpdateMovementAnimation(sf::Time dt);
 	void UpdateUI();
+	void UpdatePlayerColor();
 
 private:
 	TankType m_type;
 	sf::Sprite m_sprite; //body for tank
+	sf::Sprite m_outline_sprite; 
+	float m_outline_scale;
 	ReceiverCategories m_category; // what ccategory this tank belongs to
 	const TextureHolder& m_textures;
 
