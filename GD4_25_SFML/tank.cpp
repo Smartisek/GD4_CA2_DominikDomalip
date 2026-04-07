@@ -12,6 +12,18 @@
 namespace
 {
 	const std::vector<TankData> Table = InitializeTankData();
+
+	const std::array<sf::Color, 8> kPlayerColors =
+	{
+		sf::Color(255, 255, 255), // white
+		sf::Color(255,  99,  71), // tomato
+		sf::Color(50, 205,  50), // lime green
+		sf::Color(30, 144, 255), // dodger blue
+		sf::Color(255, 215,   0), // gold
+		sf::Color(186,  85, 211), // medium orchid
+		sf::Color(255, 140,   0), // dark orange
+		sf::Color(64, 224, 208)  // turquoise
+	};
 }
 
 Tank::Tank(int identifier, TankType type, const TextureHolder& textures, const FontHolder& fonts)
@@ -24,6 +36,7 @@ Tank::Tank(int identifier, TankType type, const TextureHolder& textures, const F
 	, m_type(type)
 	, m_identifier(identifier) //the id for tank
 	, m_sprite(textures.Get(Table[static_cast<int>(type)].m_texture))
+	, m_outline_sprite(textures.Get(Table[static_cast<int>(type)].m_texture))
 	, m_category(ReceiverCategories::kPlayerTank)
 	, m_is_firing(false)
 	, m_fire_countdown(sf::Time::Zero)
@@ -42,6 +55,7 @@ Tank::Tank(int identifier, TankType type, const TextureHolder& textures, const F
 	, m_missile_ammo(0)
 	, m_next_shot_missile(false)
 	, m_textures(textures)
+	, m_outline_scale(1.1f)
 {
 
 	m_explosion.SetFrameSize(sf::Vector2i(256,256));
@@ -57,6 +71,10 @@ Tank::Tank(int identifier, TankType type, const TextureHolder& textures, const F
 	Utility::CentreOrigin(m_sprite);
 	Utility::CentreOrigin(m_explosion);
 	Utility::CentreOrigin(m_fire_animation);
+	m_outline_sprite = m_sprite;
+	Utility::CentreOrigin(m_outline_sprite);
+	m_outline_sprite.setScale(sf::Vector2f(m_outline_scale, m_outline_scale));
+	UpdatePlayerColor();
 
 	m_fire_command.category = static_cast<int>(ReceiverCategories::kScene);
 	m_fire_command.action = [this, &textures](SceneNode& node, sf::Time dt)
@@ -124,6 +142,9 @@ void Tank::DrawCurrent(sf::RenderTarget& target, sf::RenderStates states) const
 		target.draw(m_ammo_icon, states);
 		target.draw(m_ammo_text, states);
 
+		// outline behind the tank
+		target.draw(m_outline_sprite, states);
+		// main stprite
 		target.draw(m_sprite, states);
 
 		if (m_show_fire_animation)
@@ -420,6 +441,7 @@ void Tank::UpdateMovementAnimation(sf::Time dt)
 		//resetting when stopped
 		m_anim_timer = 0.f;
 		m_sprite.setScale(sf::Vector2f(1.f, 1.f));
+		m_outline_sprite.setScale(m_sprite.getScale() * m_outline_scale);
 	}
 }
 
@@ -458,6 +480,7 @@ int Tank::GetIdentifier() const
 void Tank::SetIdentifier(int identifier)
 {
 	m_identifier = identifier;
+	UpdatePlayerColor();
 }
 
 void Tank::SetHitpoints(int points)
@@ -481,4 +504,10 @@ void Tank::SetStamina(float stamina)
 {
 	float ratio = std::clamp(stamina, 0.f, 1.f);
 	m_stamina = ratio * GetMaxStamina();
+}
+
+void Tank::UpdatePlayerColor()
+{
+	const std::size_t index = static_cast<std::size_t>(std::abs(m_identifier)) % kPlayerColors.size();
+	m_outline_sprite.setColor(kPlayerColors[index]);
 }
