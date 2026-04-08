@@ -56,6 +56,7 @@ Tank::Tank(int identifier, TankType type, const TextureHolder& textures, const F
 	, m_next_shot_missile(false)
 	, m_textures(textures)
 	, m_outline_scale(1.1f)
+	, m_use_server_rotation(false)
 {
 
 	m_explosion.SetFrameSize(sf::Vector2i(256,256));
@@ -166,7 +167,7 @@ void Tank::UpdateCurrent(sf::Time dt, CommandQueue& commands)
 	UpdateHealthBar();
 	UpdateStaminaBar();
 
-	if (std::abs(velocity.x) > 1.0f || std::abs(velocity.y) > 1.0f) //check if we are moving 
+	if (!m_use_server_rotation && std::abs(velocity.x) > 1.0f || std::abs(velocity.y) > 1.0f) //check if we are moving 
 	{
 
 		//atan2 function takes in y and x coordinates and gives angle of connecting line (0,0) to that point 
@@ -510,4 +511,9 @@ void Tank::UpdatePlayerColor()
 {
 	const std::size_t index = static_cast<std::size_t>(std::abs(m_identifier)) % kPlayerColors.size();
 	m_outline_sprite.setColor(kPlayerColors[index]);
+}
+
+void Tank::SetUseServerRotation(bool useServerRotation)
+{
+	m_use_server_rotation = useServerRotation;
 }
