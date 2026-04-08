@@ -325,10 +325,14 @@ void World::HandleCollisions() {
 		// 2. tank vs tank (body collision)
 		else if (MatchesCategories(pair, ReceiverCategories::kPlayerTank, ReceiverCategories::kPlayerTank))
 		{
-			auto& p1 = static_cast<Tank&>(*pair.first);
-			auto& p2 = static_cast<Tank&>(*pair.second);
+			if (!m_networked_world)
+			{
+				auto& p1 = static_cast<Tank&>(*pair.first);
+				auto& p2 = static_cast<Tank&>(*pair.second);
+				HandleTankCollision(p1, p2);
+			}
 
-			HandleTankCollision(p1, p2);
+		
 		}
 		// 3 tank and pickup
 		else if (MatchesCategories(pair, ReceiverCategories::kPlayerTank, ReceiverCategories::kPickup))

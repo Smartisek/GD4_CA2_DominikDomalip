@@ -296,7 +296,10 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 					// little smoothing instead of snapping positions 
 					sf::Vector2f correctionPos = tank->getPosition() + (position - tank->getPosition()) * kNetworkInterpolation;
 					tank->setPosition(correctionPos);
-					tank->setRotation(sf::degrees(rotation));
+					float currentRotation = tank->getRotation().asDegrees();
+					float delta = std::remainder(rotation - currentRotation, 360.f);
+					float correctedRotation = currentRotation + delta * kNetworkInterpolation;
+					tank->setRotation(sf::degrees(correctedRotation));
 
 					tank->SetHitpoints(hitpoints);
 					tank->SetAmmo(ammo);
