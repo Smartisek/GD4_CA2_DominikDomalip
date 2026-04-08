@@ -159,6 +159,8 @@ void GameServer::Tick()
 		info.m_position.y = std::clamp(info.m_position.y, 40.f, m_battlefield_size.y - 40.f);
 	}
 
+	HandleTankCollisions(dt);
+
 	//reflect the projectile movement and check for collisions with tanks and boundaries
 	UpdateProjectiles(dt);
 
@@ -204,6 +206,7 @@ void GameServer::HandleIncomingConnections()
 			m_tank_info[tankID].m_tank_type = static_cast<uint8_t>(TankType::kTank1);
 			m_tank_info[tankID].m_is_ready = false;
 			m_tank_info[tankID].m_position = sf::Vector2f(0.f, 0.f);
+			m_tank_info[tankID].m_collision_cooldown = 0.f;
 			m_tank_info[tankID].m_map_vote = 255; // not voted yet
 			//setting the tank id for new connections to receive and update
 			m_peers[m_connected_players]->m_tank_identifiers.push_back(tankID);
@@ -797,6 +800,35 @@ void GameServer::UpdateProjectiles(float dt)
 {
 	for (auto it = m_projectiles.begin(); it != m_projectiles.end();)
 	{
+		//if missile go to the nearest enemy tank
+		if (it->m_type == ProjectileType::kMissile)
+		{
+			TankInfo* closestEnemy = nullptr;
+			float minDistance = 999999.f;
+
+			for (auto& tankPair : m_tank_info)
+			{
+				if (tankPair.first == it->m_owner_id || tankPair.second.m_hitpoints == 0)
+				{
+					continue;
+				}
+
+				sf::Vector2f diff = tankPair.second.m_position - it->m_position;
+				float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y);
+				if (dist > 150.f && dist < minDistance)
+				{
+					minDistance = dist;
+					closestEnemy = &tankPair.second;
+				}
+			}
+
+			if (closestEnemy)
+			{
+				sf::Vector2f dir = Utility::Normalise(closestEnemy->m_position - it->m_position);
+				it->m_velocity = dir * ProjectileTable[static_cast<int>(it->m_type)].m_speed;
+			}
+		}
+		// update projectile position based on its velocity
 		it->m_position += it->m_velocity * dt; 
 
 		// bounry checkls 
@@ -823,7 +855,7 @@ void GameServer::UpdateProjectiles(float dt)
 			const float dx = tank.m_position.x - it->m_position.x;
 			const float dy = tank.m_position.y - it->m_position.y;
 			const float distSqrt = dx * dx + dy * dy;
-			const float hitRadius = 80.f;
+			const float hitRadius = 120.f;
 
 			if (distSqrt < hitRadius * hitRadius)
 			{
@@ -852,6 +884,122 @@ void GameServer::UpdateProjectiles(float dt)
 		else
 		{
 			++it;
+		}
+	}
+}
+
+void GameServer::HandleTankCollisions(float dt)
+{
+	const float collisionRadius = 80.f;
+	const float pushForce = 10.0f;
+	const float damageThreshold = 10.0f;
+	const float cooldownSeconds = 1.0f;
+	const uint8_t rammingDamage = 10;
+
+	auto clampPosition = [this](sf::Vector2f& pos)
+		{
+			pos.x = std::clamp(pos.x, 40.f, m_battlefield_size.x - 40.f);
+			pos.y = std::clamp(pos.y, 40.f, m_battlefield_size.y - 40.f);
+		};
+
+	auto applyDamage = [this, cooldownSeconds, rammingDamage](uint8_t id, TankInfo& tank)
+		{
+			if (tank.m_collision_cooldown > 0.f || tank.m_hitpoints == 0)
+			{
+				return false;
+			}
+
+			const int newHp = std::max(0, static_cast<int>(tank.m_hitpoints) - rammingDamage);
+			if (newHp == tank.m_hitpoints)
+			{
+				return false;
+			}
+
+			tank.m_hitpoints = static_cast<uint8_t>(newHp);
+			tank.m_collision_cooldown = cooldownSeconds;
+
+			sf::Packet packet;
+			packet << static_cast<uint8_t>(Server::PacketType::kEntityDamage)
+				<< id
+				<< tank.m_hitpoints
+				<< rammingDamage;
+
+			SendToAll(packet);
+			return true;
+		};
+
+	for (auto it1 = m_tank_info.begin(); it1 != m_tank_info.end(); ++it1)
+	{
+		for (auto it2 = std::next(it1); it2 != m_tank_info.end(); ++it2)
+		{
+			uint8_t id1 = it1->first;
+			uint8_t id2 = it2->first;
+			TankInfo& tank1 = it1->second;
+			TankInfo& tank2 = it2->second;
+
+			if (tank1.m_hitpoints == 0 || tank2.m_hitpoints == 0)
+			{
+				continue;
+			}
+
+			sf::Vector2f diff = tank1.m_position - tank2.m_position;
+			float distSq = diff.x * diff.x + diff.y * diff.y;
+
+			if (distSq > collisionRadius * collisionRadius)
+			{
+				continue;
+			}
+
+			float dist = std::sqrt(distSq);
+			if (dist < 0.01f)
+			{
+				continue;
+			}
+
+			sf::Vector2f normal = diff / dist;
+
+			// push apart
+			tank1.m_position += normal * pushForce;
+			tank2.m_position -= normal * pushForce;
+
+			float tank1SpeedTowards = tank1.m_velocity.x * -normal.x + tank1.m_velocity.y * -normal.y;
+			float tank2SpeedTowards = tank2.m_velocity.x * normal.x + tank2.m_velocity.y * normal.y;
+
+			if (tank1SpeedTowards > tank2SpeedTowards + damageThreshold)
+			{
+				if (applyDamage(id2, tank2))
+				{
+					tank2.m_velocity += -normal * (pushForce + 200.0f);
+				}
+			}
+			else if (tank2SpeedTowards > tank1SpeedTowards + damageThreshold)
+			{
+				if (applyDamage(id1, tank1))
+				{
+					tank1.m_velocity += normal * (pushForce + 200.0f);
+				}
+			}
+			else if (tank1SpeedTowards > 0 && tank2SpeedTowards > 0)
+			{
+				if (applyDamage(id1, tank1))
+				{
+					tank1.m_velocity += normal * (pushForce + 50.0f);
+				}
+				if (applyDamage(id2, tank2))
+				{
+					tank2.m_velocity += -normal * (pushForce + 50.0f);
+				}
+			}
+
+			// stop fighting the push
+			float dot1 = tank1.m_velocity.x * normal.x + tank1.m_velocity.y * normal.y;
+			float dot2 = tank2.m_velocity.x * normal.x + tank2.m_velocity.y * normal.y;
+
+			if (dot1 < 0.f) tank1.m_velocity -= normal * dot1;
+			if (dot2 > 0.f) tank2.m_velocity -= normal * dot2;
+
+			clampPosition(tank1.m_position);
+			clampPosition(tank2.m_position);
 		}
 	}
 }

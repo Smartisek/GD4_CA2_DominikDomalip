@@ -48,6 +48,7 @@ private:
 		std::map<uint8_t, bool> m_real_time_actions;
 		uint8_t m_map_vote;
 		sf::Vector2f m_velocity;
+		uint8_t m_collision_cooldown;
 	};
 
 	struct PickupInfo
@@ -97,6 +98,9 @@ private:
 	//projectile logics 
 	void SpawnProjectile(uint8_t tank_identifier);
 	void UpdateProjectiles(float dt);
+
+	//tank to tank collision
+	void HandleTankCollisions(float dt);
 
 private:
 	//networking variables 

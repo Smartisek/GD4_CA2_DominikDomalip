@@ -298,6 +298,7 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 					tank->setPosition(correctionPos);
 					tank->setRotation(sf::degrees(rotation));
 
+
 					tank->SetHitpoints(hitpoints);
 					tank->SetAmmo(ammo);
 					tank->SetMissileAmmo(missile_ammo);
@@ -396,6 +397,15 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 				if (damage > 0)
 				{
 					m_world.CreatePopup(tank->GetWorldPosition(), PopupType::kDamage, "-" + std::to_string(damage));
+
+					if (newHp == 0)
+					{
+						tank->PlayLocalSound(m_world.GetCommandQueue(), SoundEffect::kExplosionDestroy);
+					}
+					else
+					{
+						tank->PlayLocalSound(m_world.GetCommandQueue(), SoundEffect::kExplosion1);
+					}
 				}
 			}
 			break;
