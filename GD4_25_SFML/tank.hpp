@@ -44,7 +44,6 @@ public:
 	void SetAmmo(int ammo);
 	void SetMissileAmmo(uint8_t ammo);
 	void SetStamina(float stamina);
-	void SetUseServerRotation(bool use_server_rotation);
 
 
 private:
@@ -96,6 +95,5 @@ private:
 	float m_anim_timer;
 
 	int m_identifier;
-	bool m_use_server_rotation;
 };
 
