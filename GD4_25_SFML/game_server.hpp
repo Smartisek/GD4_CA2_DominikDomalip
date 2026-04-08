@@ -7,6 +7,7 @@
 #include <thread>
 #include <cstdint>
 #include <map>
+#include "projectile_type.hpp"
 
 
 class GameServer
@@ -56,6 +57,14 @@ private:
 		uint16_t m_pikcup_identifier;
 	};
 
+	struct ProjectileInfo
+	{
+		ProjectileType m_type;
+		sf::Vector2f m_position;
+		sf::Vector2f m_velocity;
+		uint8_t m_owner_id;
+	};
+
 	typedef std::unique_ptr<RemotePeer> PeerPtr;
 
 	// Server Loop
@@ -85,6 +94,10 @@ private:
 	void SpawnPickup();
 	void HandlePickupCollisions();
 
+	//projectile logics 
+	void SpawnProjectile(uint8_t tank_identifier);
+	void UpdateProjectiles(float dt);
+
 private:
 	//networking variables 
 	sf::Clock m_clock;
@@ -111,6 +124,9 @@ private:
 	std::vector<PickupInfo> m_active_pickups;
 	uint16_t m_pickup_id_counter = 0;
 	sf::Time m_pickup_spawn_timer;
+
+	//projectiles 
+	std::vector<ProjectileInfo> m_projectiles;
 
 };
 

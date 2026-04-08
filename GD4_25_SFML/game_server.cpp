@@ -14,6 +14,7 @@
 namespace
 {
 	const std::vector<TankData> TankTable = InitializeTankData();
+	const std::vector<ProjectileData> ProjectileTable = InitializeProjectileData();
 }
 
 // important to set to non-blocking otherwise server will hang waiting to read input from connection
@@ -27,7 +28,7 @@ GameServer::RemotePeer::RemotePeer()
 GameServer::GameServer(sf::Vector2f battlefieldSize)
 	: m_listening_state(false)
 	, m_client_timeout(sf::seconds(5.f))
-	, m_max_connected_players(4)
+	, m_max_connected_players(8)
 	, m_connected_players(0)
 	, m_game_started(false)
 	, m_selected_map(0)
@@ -157,6 +158,9 @@ void GameServer::Tick()
 		info.m_position.x = std::clamp(info.m_position.x, 40.f, m_battlefield_size.x - 40.f);
 		info.m_position.y = std::clamp(info.m_position.y, 40.f, m_battlefield_size.y - 40.f);
 	}
+
+	//reflect the projectile movement and check for collisions with tanks and boundaries
+	UpdateProjectiles(dt);
 
 	//pickups spawning handle 
 	if (m_game_started)
@@ -356,7 +360,7 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
 
 				packet >> identifier >> position.x >> position.y >> rotation >> hitpoints >> ammo >> missileAmmo >> stamina;
 
-				if (m_tank_info.find(identifier) != m_tank_info.end())
+				/*if (m_tank_info.find(identifier) != m_tank_info.end())
 				{
 					m_tank_info[identifier].m_hitpoints = hitpoints;
 					m_tank_info[identifier].m_current_ammo = ammo;
@@ -365,7 +369,7 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
 
 					std::cout << "[SERVER] Tank " << static_cast<int>(identifier)
 						<< " moved to (" << position.x << ", " << position.y << ")" << std::endl;
-				}
+				}*/
 			}
 			break;
 		}
@@ -528,6 +532,8 @@ void GameServer::UpdateClientState()
 		packet << pair.second.m_missile_ammo;
 		packet << pair.second.stamina;
 	}
+
+	std::cout << "[SERVER] Update packet size: " << packet.getDataSize() << " bytes." << std::endl;
 	SendToAll(packet);
 }
 
@@ -548,6 +554,11 @@ void GameServer::NotifyPlayerEvent(uint8_t tank_identifier, int8_t action)
 	packet << m_tank_info[tank_identifier].m_rotation;
 
 	SendToAll(packet);
+
+	if (action == static_cast<uint8_t>(Action::kBulletFire))
+	{
+		SpawnProjectile(tank_identifier);
+	}
 }
 
 void GameServer::CheckIfMapVotingDone()
@@ -728,6 +739,119 @@ void GameServer::HandlePickupCollisions()
 			{
 				it++;
 			}
+		}
+	}
+}
+
+void GameServer::SpawnProjectile(uint8_t tank_identifier)
+{
+	auto it = m_tank_info.find(tank_identifier);
+	if (it == m_tank_info.end())
+	{
+		return;
+	}
+
+	TankInfo& tank = it->second;
+	const bool useMissile = tank.m_missile_ammo > 0; //true when player has missile ammo, false when only regular bullet
+
+	if (!useMissile && tank.m_current_ammo == 0)
+	{
+		return; //out of ammo
+	}
+
+	ProjectileType type = ProjectileType::kTank1Bullet; //default bullet 
+
+	if (useMissile)
+	{
+		type = ProjectileType::kMissile;
+		tank.m_missile_ammo--;
+	}
+	else
+	{
+		//decide on type of bullet based on tank type and then decrease its ammo 
+		switch (static_cast<TankType>(tank.m_tank_type))
+		{
+			case TankType::kTank1: type = ProjectileType::kTank1Bullet; break;
+			case TankType::kTank2: type = ProjectileType::kTank2Bullet; break;
+			case TankType::kTank3: type = ProjectileType::kTank3Bullet; break;
+			case TankType::kTank4: type = ProjectileType::kTank4Bullet; break;
+			default: type = ProjectileType::kTank1Bullet; break;
+		}
+		tank.m_current_ammo--;
+	}
+
+	const float radiansRotation = Utility::toRadians(tank.m_rotation);
+	sf::Vector2f direction(std::sin(radiansRotation), -std::cos(radiansRotation));
+
+	//spawn, give owner, speed and direction 
+	ProjectileInfo projectile;
+	projectile.m_type = type;
+	projectile.m_owner_id = tank_identifier;
+	projectile.m_position = tank.m_position + direction * 100.f;
+	projectile.m_velocity = direction * ProjectileTable[static_cast<int>(type)].m_speed;
+
+	m_projectiles.push_back(projectile);
+}
+
+void GameServer::UpdateProjectiles(float dt)
+{
+	for (auto it = m_projectiles.begin(); it != m_projectiles.end();)
+	{
+		it->m_position += it->m_velocity * dt; 
+
+		// bounry checkls 
+		if (it->m_position.x < 0.f || it->m_position.y < 0.f ||
+			it->m_position.x > m_battlefield_size.x || it->m_position.y > m_battlefield_size.y)
+		{
+			it = m_projectiles.erase(it);
+			continue;
+		}
+
+		bool hit = false;
+		for (auto& tankPair : m_tank_info)
+		{
+			uint8_t tankID = tankPair.first;
+			TankInfo& tank = tankPair.second;
+
+			//self chekc and also check if the tank is already destroyed
+			if (tankID == it->m_owner_id || tank.m_hitpoints == 0)
+			{
+				continue;
+			}
+
+			//pythagorean check collision
+			const float dx = tank.m_position.x - it->m_position.x;
+			const float dy = tank.m_position.y - it->m_position.y;
+			const float distSqrt = dx * dx + dy * dy;
+			const float hitRadius = 80.f;
+
+			if (distSqrt < hitRadius * hitRadius)
+			{
+				const uint8_t damage = static_cast<uint8_t>(ProjectileTable[static_cast<int>(it->m_type)].m_damage);
+				const uint8_t newHP = std::max(0, static_cast<int>(tank.m_hitpoints) - damage);
+				tank.m_hitpoints = static_cast<uint8_t>(newHP);
+
+				sf::Packet packet;
+				packet << static_cast<uint8_t>(Server::PacketType::kEntityDamage)
+					<< tankID
+					<< tank.m_hitpoints
+					<< damage;
+
+
+				SendToAll(packet);
+
+				hit = true;
+				break;
+			}
+		}
+
+		if (hit)
+		{
+			it = m_projectiles.erase(it);
+		}
+		else
+		{
+			++it;
 		}
 	}
 }

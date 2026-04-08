@@ -297,6 +297,11 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 					sf::Vector2f correctionPos = tank->getPosition() + (position - tank->getPosition()) * kNetworkInterpolation;
 					tank->setPosition(correctionPos);
 					tank->setRotation(sf::degrees(rotation));
+
+					tank->SetHitpoints(hitpoints);
+					tank->SetAmmo(ammo);
+					tank->SetMissileAmmo(missile_ammo);
+					tank->SetStamina(stamina);
 				}
 				else
 				{
@@ -377,6 +382,23 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 				}
 				tank->PlayLocalSound(m_world.GetCommandQueue(), SoundEffect::kPickup);
 			}
+		}
+
+		case Server::PacketType::kEntityDamage:
+		{
+			uint8_t entityId, newHp, damage;
+			packet >> entityId >> newHp >> damage;
+
+			//client check is that me ? 
+			if (Tank* tank = m_world.GetTank(entityId))
+			{
+				tank->SetHitpoints(newHp);m_world.CreatePopup(tank->GetWorldPosition(), PopupType::kDamage, "-" + std::to_string(damage));
+				if (damage > 0)
+				{
+					m_world.CreatePopup(tank->GetWorldPosition(), PopupType::kDamage, "-" + std::to_string(damage));
+				}
+			}
+			break;
 		}
 		//will need to add more packet types for things like events, pickups etc
 		default:
