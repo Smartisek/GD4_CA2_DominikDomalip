@@ -855,7 +855,7 @@ void GameServer::UpdateProjectiles(float dt)
 			const float dx = tank.m_position.x - it->m_position.x;
 			const float dy = tank.m_position.y - it->m_position.y;
 			const float distSqrt = dx * dx + dy * dy;
-			const float hitRadius = 80.f;
+			const float hitRadius = 120.f;
 
 			if (distSqrt < hitRadius * hitRadius)
 			{
