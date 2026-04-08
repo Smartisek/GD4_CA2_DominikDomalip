@@ -300,10 +300,14 @@ void World::HandleCollisions() {
 				continue; //ignore its onw bullets
 			}
 
-			// server should correct this (might need to remove? will see after testing)
-			tank.Damage(bullet.GetDamage());
 			bullet.Destroy();
 
+			if (m_networked_world)
+			{
+				continue;
+			}
+
+			tank.Damage(bullet.GetDamage());
 			// spawn popup
 			float damage = bullet.GetDamage();
 			CreatePopup(tank.GetWorldPosition(), PopupType::kDamage, "-" + std::to_string((int)damage));
@@ -381,8 +385,15 @@ void World::HandleCollisions() {
 			auto& tank = static_cast<Tank&>(*pair.first);
 			auto& bullet = static_cast<Projectile&>(*pair.second);
 
-			tank.Damage(bullet.GetDamage());
 			bullet.Destroy();
+
+
+			if (m_networked_world)
+			{
+				continue;
+			}
+
+			tank.Damage(bullet.GetDamage());
 
 			float damage = bullet.GetDamage();
 			CreatePopup(tank.GetWorldPosition(), PopupType::kDamage, "-" + std::to_string((int)damage));

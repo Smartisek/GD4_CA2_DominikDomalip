@@ -22,7 +22,8 @@ namespace Server
 		kSpawnProjectile, //takes sf::Int32 for projectile type in ProjectileType.hpp and the position
 		kUpdateClientState, // server will send this to clients every frame, it will contain all the information about tanks, projectiles and pickups on the map 
 		kGameEvent, // this will be used to send game events such as player killed, player won, etc
-		kMissionSuccess //to give the game over screen to clients, takes the player ID of the winner
+		kMissionSuccess, //to give the game over screen to clients, takes the player ID of the winner
+		kEntityDamage //notify clients that entity took damage 
 	};
 }
 
