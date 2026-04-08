@@ -528,6 +528,8 @@ void GameServer::UpdateClientState()
 		packet << pair.second.m_missile_ammo;
 		packet << pair.second.stamina;
 	}
+
+	std::cout << "[SERVER] Update packet size: " << packet.getDataSize() << " bytes." << std::endl;
 	SendToAll(packet);
 }
 
