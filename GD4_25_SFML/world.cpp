@@ -715,6 +715,10 @@ void World::GuideMissile()
 			{
 				if (tank && !tank->IsDestroyed())
 				{
+					if (tank->GetIdentifier() == missile.GetOwnerId())
+					{
+						continue;
+					}
 					sf::Vector2f diff = tank->GetWorldPosition() - missilePos;
 					float distance = std::sqrt(diff.x * diff.x + diff.y * diff.y);
 					// only consider tanks away some portion so it does not hit the player shooting
@@ -761,7 +765,7 @@ Tank* World::AddTank(uint8_t identifier, TankType type)
 	std::unique_ptr<Tank> player(new Tank(identifier, type, m_textures, m_fonts));
 	//this should be overwritten by the server anyway 
 	player->setPosition(m_spawn_position);
-	
+	player->SetUseServerRotation(m_networked_world);
 	//give id so it can be tracked and controlled by the multiplayer game state
 	player->SetIdentifier(identifier);
 

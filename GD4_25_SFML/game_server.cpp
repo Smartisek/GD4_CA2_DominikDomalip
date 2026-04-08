@@ -800,6 +800,35 @@ void GameServer::UpdateProjectiles(float dt)
 {
 	for (auto it = m_projectiles.begin(); it != m_projectiles.end();)
 	{
+		//if missile go to the nearest enemy tank
+		if (it->m_type == ProjectileType::kMissile)
+		{
+			TankInfo* closestEnemy = nullptr;
+			float minDistance = 999999.f;
+
+			for (auto& tankPair : m_tank_info)
+			{
+				if (tankPair.first == it->m_owner_id || tankPair.second.m_hitpoints == 0)
+				{
+					continue;
+				}
+
+				sf::Vector2f diff = tankPair.second.m_position - it->m_position;
+				float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y);
+				if (dist > 150.f && dist < minDistance)
+				{
+					minDistance = dist;
+					closestEnemy = &tankPair.second;
+				}
+			}
+
+			if (closestEnemy)
+			{
+				sf::Vector2f dir = Utility::Normalise(closestEnemy->m_position - it->m_position);
+				it->m_velocity = dir * ProjectileTable[static_cast<int>(it->m_type)].m_speed;
+			}
+		}
+		// update projectile position based on its velocity
 		it->m_position += it->m_velocity * dt; 
 
 		// bounry checkls 
