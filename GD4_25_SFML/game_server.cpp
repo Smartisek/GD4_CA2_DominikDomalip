@@ -857,12 +857,19 @@ void GameServer::UpdateProjectiles(float dt)
 			}
 
 			//pythagorean check collision
-			const float dx = tank.m_position.x - it->m_position.x;
-			const float dy = tank.m_position.y - it->m_position.y;
-			const float distSqrt = dx * dx + dy * dy;
-			const float hitRadius = 120.f;
+			const TankData& stats = TankTable[tank.m_tank_type];
+			sf::Vector2f size(
+				static_cast<float>(stats.m_texture_rect.size.x),
+				static_cast<float>(stats.m_texture_rect.size.y));
 
-			if (distSqrt < hitRadius * hitRadius)
+			//edge paddding might not need to test
+			const float padding = 6.f;
+			size.x += padding;
+			size.y += padding;
+
+			sf::FloatRect tankBounds(tank.m_position - size / 2.f, size);
+
+			if (tankBounds.contains(it->m_position))
 			{
 				const uint8_t damage = static_cast<uint8_t>(ProjectileTable[static_cast<int>(it->m_type)].m_damage);
 				const uint8_t newHP = std::max(0, static_cast<int>(tank.m_hitpoints) - damage);
