@@ -17,6 +17,7 @@ GameOverState::GameOverState(StateStack& stack, Context context)
 		? *context.game_over_message
 		: "GAME OVER";
 
+	m_game_over_text.setString(message);
 	m_game_over_text.setCharacterSize(70);
 	m_game_over_text.setFillColor(sf::Color::White);
 	Utility::CentreOrigin(m_game_over_text);
