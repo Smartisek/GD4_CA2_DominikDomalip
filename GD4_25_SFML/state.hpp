@@ -23,7 +23,7 @@ public:
 	struct Context
 	{
 		Context(sf::RenderWindow& window, TextureHolder& textures, FontHolder& fonts,
-			MusicPlayer& music, SoundPlayer& sound, KeyBinding& keys1, KeyBinding& keys2, sf::TcpSocket& socket, std::unique_ptr<GameServer>& server, uint8_t& local_id);
+			MusicPlayer& music, SoundPlayer& sound, KeyBinding& keys1, KeyBinding& keys2, sf::TcpSocket& socket, std::unique_ptr<GameServer>& server, uint8_t& local_id, std::string& game_over_message);
 		//TODO unique_ptr rather than raw pointers here?
 		sf::RenderWindow* window;
 		TextureHolder* textures;
@@ -35,6 +35,7 @@ public:
 		sf::TcpSocket* socket;
 		std::unique_ptr<GameServer>* server;
 		uint8_t* local_id;
+		std::string* game_over_message;
 	};
 
 public:

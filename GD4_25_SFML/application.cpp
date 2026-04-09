@@ -24,7 +24,7 @@ Application::Application()
 	, m_keys2(2) // 2 means Player 2 defaults
 	, m_multiplayer_host(false)
 	, m_socket()
-	, m_stack(State::Context(m_window, m_textures, m_fonts, m_music, m_sound, m_keys1, m_keys2, m_socket, m_server, m_local_id))
+	, m_stack(State::Context(m_window, m_textures, m_fonts, m_music, m_sound, m_keys1, m_keys2, m_socket, m_server, m_local_id, m_game_over_message))
 {
 	m_window.setKeyRepeatEnabled(false);
 	m_window.setVerticalSyncEnabled(true);
@@ -107,8 +107,7 @@ void Application::RegisterStates()
 	//multiplayer states 
 	m_stack.RegisterState<MultiplayerGameState>(StateID::kMultiplayerHost, true); 
 	m_stack.RegisterState<MultiplayerGameState>(StateID::kMultiplayerJoin, false); 
-
-	//m_stack.RegisterState<GameOverState>(StateID::kGameOver);
+	m_stack.RegisterState<GameOverState>(StateID::kGameOver);
 }
 
 

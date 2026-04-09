@@ -93,6 +93,7 @@ bool MultiplayerGameState::Update(sf::Time dt)
 {
 	if (m_connected)
 	{
+
 		if (m_game_over && m_return_to_menu)
 		{
 			m_game_over_elapsed += dt;
@@ -478,15 +479,12 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 			uint8_t winnerId;
 			packet >> winnerId;
 
-			m_game_over = true;
-
-			if (winnerId == *GetContext().local_id)
-			{
-				m_game_over_text.setString("Mission Success! You win!");
-			}
-
-			Utility::CentreOrigin(m_game_over_text);
-			m_game_over_text.setPosition(m_window.getView().getCenter());
+			//if winner is local player show win message 
+			*GetContext().game_over_message = (winnerId == *GetContext().local_id)
+				? "YOU WIN!"
+				: "PLAYER " + std::to_string(winnerId) + " WINS!";
+			RequestStackClear();
+			RequestStackPush(StateID::kGameOver);
 			break;
 		}
 
@@ -495,18 +493,11 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 			uint8_t deadId;
 			packet >> deadId;
 
-			//remove the player 
-			m_world.RemoveTank(deadId);
-			m_players.erase(deadId);
-
 			if (deadId == *GetContext().local_id)
 			{
-				m_game_over = true;
-				m_return_to_menu = true;
-				m_game_over_elapsed = sf::Time::Zero;
-				m_game_over_text.setString("YOU LOST");
-				Utility::CentreOrigin(m_game_over_text);
-				m_game_over_text.setPosition(m_window.getView().getCenter());
+				*GetContext().game_over_message = "YOU LOST";
+				RequestStackClear();
+				RequestStackPush(StateID::kGameOver);
 			}
 			break;
 		}

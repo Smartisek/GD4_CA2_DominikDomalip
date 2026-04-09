@@ -11,7 +11,7 @@ State::~State()
 }
 
 State::Context::Context(sf::RenderWindow& window, TextureHolder& textures, FontHolder& fonts,
-	MusicPlayer& music, SoundPlayer& sound, KeyBinding& keys1, KeyBinding& keys2, sf::TcpSocket& socket, std::unique_ptr<GameServer>& server, uint8_t& localID)
+	MusicPlayer& music, SoundPlayer& sound, KeyBinding& keys1, KeyBinding& keys2, sf::TcpSocket& socket, std::unique_ptr<GameServer>& server, uint8_t& localID, std::string& game_over_message)
 	: window(&window)
 	, textures(&textures)
 	, fonts(&fonts)
@@ -22,6 +22,7 @@ State::Context::Context(sf::RenderWindow& window, TextureHolder& textures, FontH
 	, socket(&socket)
 	, server(&server)
 	, local_id(&localID)
+	, game_over_message(&game_over_message)
 {
 }
 
