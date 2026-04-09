@@ -24,6 +24,7 @@ namespace Server
 		kUpdateClientState, // server will send this to clients every frame, it will contain all the information about tanks, projectiles and pickups on the map 
 		kGameEvent, // this will be used to send game events such as player killed, player won, etc
 		kMissionSuccess, //to give the game over screen to clients, takes the player ID of the winner
+		kPlayerEliminated, //notify player was destroyed and eliminate
 		kEntityDamage //notify clients that entity took damage 
 	};
 }

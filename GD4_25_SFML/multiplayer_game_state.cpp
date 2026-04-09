@@ -21,6 +21,8 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
 	, m_time_since_last_packet(sf::seconds(kClientTimeout))
 	, m_broadcast_text(context.fonts->Get(FontID::kMain))
 	, m_failed_connection_text(context.fonts->Get(FontID::kMain))
+	, m_game_over(false)
+	, m_game_over_text(context.fonts->Get(FontID::kMain))
 {
 	sf::Vector2f windowSize = m_window.getView().getSize();
 
@@ -34,6 +36,14 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
 	m_failed_connection_text.setFillColor(sf::Color::White);
 	Utility::CentreOrigin(m_failed_connection_text);
 	m_failed_connection_text.setPosition(sf::Vector2f(m_window.getSize().x / 2.f, m_window.getSize().y / 2.f));
+
+	//game over drawing setup
+	m_game_over_text.setCharacterSize(70);
+	m_game_over_text.setFillColor(sf::Color::White);
+	Utility::CentreOrigin(m_game_over_text);
+
+	m_game_over_bg.setFillColor(sf::Color(0, 0, 0, 180));
+	m_game_over_bg.setSize(m_window.getView().getSize());
 
 	sf::TcpSocket* socket = GetContext().socket;
 	socket->setBlocking(false);
@@ -53,6 +63,14 @@ void MultiplayerGameState::Draw()
 	if (m_connected)
 	{
 		m_world.Draw();
+
+		if (m_game_over)
+		{
+			m_game_over_bg.setSize(m_window.getView().getSize());
+			m_window.draw(m_game_over_bg);
+			m_window.draw(m_game_over_text);
+			return;
+		}
 
 		// Show UI overlays (Broadcasts)
 		m_window.setView(m_window.getDefaultView());
@@ -440,6 +458,36 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 					turret.setRotation(sf::degrees(rotation));
 				});
 			m_world.GetCommandQueue().Push(turretCommand);
+			break;
+		}
+
+		case Server::PacketType::kMissionSuccess:
+		{
+			uint8_t winnerId;
+			packet >> winnerId;
+
+			m_game_over = true;
+
+			if (winnerId == *GetContext().local_id)
+			{
+				m_game_over_text.setString("Mission Success! You win!");
+			}
+
+			Utility::CentreOrigin(m_game_over_text);
+			m_game_over_text.setPosition(m_window.getView().getCenter());
+			break;
+		}
+
+		case Server::PacketType::kPlayerEliminated:
+		{
+			uint8_t deadId;
+			packet >> deadId;
+
+			if (deadId == *GetContext().local_id)
+			{
+				RequestStackClear();
+				RequestStackPush(StateID::kMenu);
+			}
 			break;
 		}
 
