@@ -10,11 +10,13 @@
 #include <iostream>
 #include "map_type.hpp"
 #include "constants.hpp"
+#include "turret_type.hpp"
 
 namespace
 {
 	const std::vector<TankData> TankTable = InitializeTankData();
 	const std::vector<ProjectileData> ProjectileTable = InitializeProjectileData();
+	const std::vector<TurretData> TurretTable = InitializeTurretData();
 }
 
 // important to set to non-blocking otherwise server will hang waiting to read input from connection
@@ -37,6 +39,9 @@ GameServer::GameServer(sf::Vector2f battlefieldSize)
 	, m_waiting_thread_end(false)
 	, m_peers(1)
 	, m_thread(&GameServer::ExecutionThread, this)
+	, m_turret_fire_cooldown(sf::Time::Zero)
+	, m_turret_position(battlefieldSize.x / 2.f, battlefieldSize.y / 2.f)
+	, m_turret_rotation(0.f)
 {
 	m_listener_socket.setBlocking(false);
 	m_peers[0].reset(new RemotePeer); //reservation for server itself
@@ -160,7 +165,7 @@ void GameServer::Tick()
 	}
 
 	HandleTankCollisions(dt);
-
+	UpdateTurret(dt);
 	//reflect the projectile movement and check for collisions with tanks and boundaries
 	UpdateProjectiles(dt);
 
@@ -852,12 +857,19 @@ void GameServer::UpdateProjectiles(float dt)
 			}
 
 			//pythagorean check collision
-			const float dx = tank.m_position.x - it->m_position.x;
-			const float dy = tank.m_position.y - it->m_position.y;
-			const float distSqrt = dx * dx + dy * dy;
-			const float hitRadius = 120.f;
+			const TankData& stats = TankTable[tank.m_tank_type];
+			sf::Vector2f size(
+				static_cast<float>(stats.m_texture_rect.size.x),
+				static_cast<float>(stats.m_texture_rect.size.y));
 
-			if (distSqrt < hitRadius * hitRadius)
+			//edge paddding might not need to test
+			const float padding = 6.f;
+			size.x += padding;
+			size.y += padding;
+
+			sf::FloatRect tankBounds(tank.m_position - size / 2.f, size);
+
+			if (tankBounds.contains(it->m_position))
 			{
 				const uint8_t damage = static_cast<uint8_t>(ProjectileTable[static_cast<int>(it->m_type)].m_damage);
 				const uint8_t newHP = std::max(0, static_cast<int>(tank.m_hitpoints) - damage);
@@ -890,7 +902,6 @@ void GameServer::UpdateProjectiles(float dt)
 
 void GameServer::HandleTankCollisions(float dt)
 {
-	const float collisionRadius = 80.f;
 	const float pushForce = 10.0f;
 	const float damageThreshold = 10.0f;
 	const float cooldownSeconds = 1.0f;
@@ -928,6 +939,16 @@ void GameServer::HandleTankCollisions(float dt)
 			return true;
 		};
 
+	//aabb collision logic
+	auto getBounds = [](const TankInfo& tank)
+		{
+			const TankData& stats = TankTable[tank.m_tank_type];
+			sf::Vector2f size(
+				static_cast<float>(stats.m_texture_rect.size.x),
+				static_cast<float>(stats.m_texture_rect.size.y));
+			return sf::FloatRect(tank.m_position - size / 2.f, size);
+		};
+
 	for (auto it1 = m_tank_info.begin(); it1 != m_tank_info.end(); ++it1)
 	{
 		for (auto it2 = std::next(it1); it2 != m_tank_info.end(); ++it2)
@@ -942,29 +963,28 @@ void GameServer::HandleTankCollisions(float dt)
 				continue;
 			}
 
+			if (!getBounds(tank1).findIntersection(getBounds(tank2)))
+			{
+				continue;
+			}
+
 			sf::Vector2f diff = tank1.m_position - tank2.m_position;
 			float distSq = diff.x * diff.x + diff.y * diff.y;
 
-			if (distSq > collisionRadius * collisionRadius)
+			if (distSq < 0.01f)
 			{
 				continue;
 			}
 
 			float dist = std::sqrt(distSq);
-			if (dist < 0.01f)
-			{
-				continue;
-			}
-
 			sf::Vector2f normal = diff / dist;
 
-			// push apart
 			tank1.m_position += normal * pushForce;
 			tank2.m_position -= normal * pushForce;
 
 			float tank1SpeedTowards = tank1.m_velocity.x * -normal.x + tank1.m_velocity.y * -normal.y;
 			float tank2SpeedTowards = tank2.m_velocity.x * normal.x + tank2.m_velocity.y * normal.y;
-
+			//each other ram
 			if (tank1SpeedTowards > tank2SpeedTowards + damageThreshold)
 			{
 				if (applyDamage(id2, tank2))
@@ -972,6 +992,7 @@ void GameServer::HandleTankCollisions(float dt)
 					tank2.m_velocity += -normal * (pushForce + 200.0f);
 				}
 			}
+			//one sided rams 
 			else if (tank2SpeedTowards > tank1SpeedTowards + damageThreshold)
 			{
 				if (applyDamage(id1, tank1))
@@ -990,8 +1011,7 @@ void GameServer::HandleTankCollisions(float dt)
 					tank2.m_velocity += -normal * (pushForce + 50.0f);
 				}
 			}
-
-			// stop fighting the push
+		
 			float dot1 = tank1.m_velocity.x * normal.x + tank1.m_velocity.y * normal.y;
 			float dot2 = tank2.m_velocity.x * normal.x + tank2.m_velocity.y * normal.y;
 
@@ -1002,4 +1022,67 @@ void GameServer::HandleTankCollisions(float dt)
 			clampPosition(tank2.m_position);
 		}
 	}
+}
+
+void GameServer::UpdateTurret(float dt)
+{
+	const TurretData& turret = TurretTable[static_cast<int>(TurretType::kStandard)];
+
+	TankInfo* closestTank = nullptr;
+	float minDist = turret.m_range;
+
+	for (auto& pair : m_tank_info)
+	{
+		if (pair.second.m_hitpoints == 0)
+		{
+			continue;
+		}
+
+		sf::Vector2f diff = pair.second.m_position - m_turret_position;
+		float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y);
+
+		if (dist < minDist)
+		{
+			minDist = dist;
+			closestTank = &pair.second;
+		}
+	}
+
+	if (!closestTank)
+	{
+		return;
+	}
+
+	sf::Vector2f dir = Utility::Normalise(closestTank->m_position - m_turret_position);
+	m_turret_rotation = Utility::ToDegrees(std::atan2(dir.y, dir.x)) + 90.f;
+
+	// send rotation every tick (smooth visuals)
+	sf::Packet turretPacket;
+	turretPacket << static_cast<uint8_t>(Server::PacketType::kTurretState)
+		<< m_turret_rotation;
+	SendToAll(turretPacket);
+
+	// fire only when cooldown expires
+	m_turret_fire_cooldown -= sf::seconds(dt);
+	if (m_turret_fire_cooldown > sf::Time::Zero)
+	{
+		return;
+	}
+
+	ProjectileInfo projectile;
+	projectile.m_type = turret.m_bullet_type;
+	projectile.m_owner_id = 255;
+	projectile.m_position = m_turret_position + dir * 60.f;
+	projectile.m_velocity = dir * ProjectileTable[static_cast<int>(turret.m_bullet_type)].m_speed;
+
+	m_projectiles.push_back(projectile);
+	m_turret_fire_cooldown = turret.m_fire_interval;
+
+	sf::Packet shotPacket;
+	shotPacket << static_cast<uint8_t>(Server::PacketType::kSpawnProjectile)
+		<< static_cast<uint8_t>(projectile.m_type)
+		<< projectile.m_position.x << projectile.m_position.y
+		<< projectile.m_velocity.x << projectile.m_velocity.y
+		<< projectile.m_owner_id;
+	SendToAll(shotPacket);
 }

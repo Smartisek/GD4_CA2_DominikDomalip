@@ -13,6 +13,7 @@
 #include "obstacle.hpp"
 #include "turret.hpp"
 #include "popup_text.hpp"
+#include "utility.hpp"
 
 
 
@@ -48,39 +49,42 @@ void World::Update(sf::Time dt)
 	GuideMissile();
 	UpdateSounds();
 
-	//find alive tanks and update the turret target for those
-	std::vector<sf::Vector2f> activeTankPositions;
-	for (Tank* tank : m_player_tanks)
+	if (!m_networked_world)
 	{
-		if (tank && !tank->IsDestroyed())
+		//find alive tanks and update the turret target for those
+		std::vector<sf::Vector2f> activeTankPositions;
+		for (Tank* tank : m_player_tanks)
 		{
-			activeTankPositions.push_back(tank->GetWorldPosition());
-		}
-	}
-
-	Command turretCommand;
-	turretCommand.category = static_cast<int>(ReceiverCategories::kEnemy);
-	turretCommand.action = DerivedAction<Turret>([activeTankPositions](Turret& turret, sf::Time)
-		{
-			if (!activeTankPositions.empty())
+			if (tank && !tank->IsDestroyed())
 			{
-				sf::Vector2f turretPos = turret.GetWorldPosition();
-				sf::Vector2f closestPos = activeTankPositions[0];
-				float minDistance = std::numeric_limits<float>::max();
-
-				for (const auto& pos : activeTankPositions)
-				{
-					float distSq = std::pow(pos.x - turretPos.x, 2) + std::pow(pos.y - turretPos.y, 2);
-					if (distSq < minDistance)
-					{
-						minDistance = distSq;
-						closestPos = pos;
-					}
-					turret.UpdateTarget(closestPos);
-				}
+				activeTankPositions.push_back(tank->GetWorldPosition());
 			}
-		});
-	m_command_queue.Push(turretCommand);
+		}
+
+		Command turretCommand;
+		turretCommand.category = static_cast<int>(ReceiverCategories::kEnemy);
+		turretCommand.action = DerivedAction<Turret>([activeTankPositions](Turret& turret, sf::Time)
+			{
+				if (!activeTankPositions.empty())
+				{
+					sf::Vector2f turretPos = turret.GetWorldPosition();
+					sf::Vector2f closestPos = activeTankPositions[0];
+					float minDistance = std::numeric_limits<float>::max();
+
+					for (const auto& pos : activeTankPositions)
+					{
+						float distSq = std::pow(pos.x - turretPos.x, 2) + std::pow(pos.y - turretPos.y, 2);
+						if (distSq < minDistance)
+						{
+							minDistance = distSq;
+							closestPos = pos;
+						}
+						turret.UpdateTarget(closestPos);
+					}
+				}
+			});
+		m_command_queue.Push(turretCommand);
+	}
 
 
 	//Process Input Commands
@@ -830,4 +834,16 @@ void World::RemovePickup(uint16_t id)
 		it->second->Destroy();
 		m_network_pickups.erase(it);
 	}
+}
+
+void World::CreateProjectile(ProjectileType type, sf::Vector2f position, sf::Vector2f velocity, ReceiverCategories owner, uint8_t ownerId)
+{
+	std::unique_ptr<Projectile> projectile(new Projectile(type, m_textures, owner, ownerId));
+	projectile->setPosition(position);
+	projectile->SetVelocity(velocity);
+
+	float angle = std::atan2(velocity.y, velocity.x);
+	projectile->setRotation(sf::degrees(Utility::ToDegrees(angle) + 90.f));
+
+	m_scene_layers[static_cast<int>(SceneLayers::kUpperGround)]->AttachChild(std::move(projectile));
 }
