@@ -902,7 +902,6 @@ void GameServer::UpdateProjectiles(float dt)
 
 void GameServer::HandleTankCollisions(float dt)
 {
-	const float collisionRadius = 80.f;
 	const float pushForce = 10.0f;
 	const float damageThreshold = 10.0f;
 	const float cooldownSeconds = 1.0f;
@@ -940,6 +939,16 @@ void GameServer::HandleTankCollisions(float dt)
 			return true;
 		};
 
+	//aabb collision logic
+	auto getBounds = [](const TankInfo& tank)
+		{
+			const TankData& stats = TankTable[tank.m_tank_type];
+			sf::Vector2f size(
+				static_cast<float>(stats.m_texture_rect.size.x),
+				static_cast<float>(stats.m_texture_rect.size.y));
+			return sf::FloatRect(tank.m_position - size / 2.f, size);
+		};
+
 	for (auto it1 = m_tank_info.begin(); it1 != m_tank_info.end(); ++it1)
 	{
 		for (auto it2 = std::next(it1); it2 != m_tank_info.end(); ++it2)
@@ -954,29 +963,28 @@ void GameServer::HandleTankCollisions(float dt)
 				continue;
 			}
 
+			if (!getBounds(tank1).findIntersection(getBounds(tank2)))
+			{
+				continue;
+			}
+
 			sf::Vector2f diff = tank1.m_position - tank2.m_position;
 			float distSq = diff.x * diff.x + diff.y * diff.y;
 
-			if (distSq > collisionRadius * collisionRadius)
+			if (distSq < 0.01f)
 			{
 				continue;
 			}
 
 			float dist = std::sqrt(distSq);
-			if (dist < 0.01f)
-			{
-				continue;
-			}
-
 			sf::Vector2f normal = diff / dist;
 
-			// push apart
 			tank1.m_position += normal * pushForce;
 			tank2.m_position -= normal * pushForce;
 
 			float tank1SpeedTowards = tank1.m_velocity.x * -normal.x + tank1.m_velocity.y * -normal.y;
 			float tank2SpeedTowards = tank2.m_velocity.x * normal.x + tank2.m_velocity.y * normal.y;
-
+			//each other ram
 			if (tank1SpeedTowards > tank2SpeedTowards + damageThreshold)
 			{
 				if (applyDamage(id2, tank2))
@@ -984,6 +992,7 @@ void GameServer::HandleTankCollisions(float dt)
 					tank2.m_velocity += -normal * (pushForce + 200.0f);
 				}
 			}
+			//one sided rams 
 			else if (tank2SpeedTowards > tank1SpeedTowards + damageThreshold)
 			{
 				if (applyDamage(id1, tank1))
@@ -1002,8 +1011,7 @@ void GameServer::HandleTankCollisions(float dt)
 					tank2.m_velocity += -normal * (pushForce + 50.0f);
 				}
 			}
-
-			// stop fighting the push
+		
 			float dot1 = tank1.m_velocity.x * normal.x + tank1.m_velocity.y * normal.y;
 			float dot2 = tank2.m_velocity.x * normal.x + tank2.m_velocity.y * normal.y;
 
