@@ -813,10 +813,17 @@ Tank* World::GetTank(uint8_t identifier) const
 void World::RemoveTank(uint8_t identifier)
 {
 	Tank* tank = GetTank(identifier);
-	if (tank)
+	if (!tank)
 	{
-		tank->Destroy();
-		m_player_tanks.erase(std::find(m_player_tanks.begin(), m_player_tanks.end(), tank));
+		return;
+	}
+
+	tank->Destroy();
+
+	auto it = std::find(m_player_tanks.begin(), m_player_tanks.end(), tank);
+	if (it != m_player_tanks.end())
+	{
+		m_player_tanks.erase(it);
 	}
 }
 
