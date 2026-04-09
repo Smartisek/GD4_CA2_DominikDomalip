@@ -127,8 +127,6 @@ bool MultiplayerGameState::Update(sf::Time dt)
 				}
 			}
 
-			if (!found_local_tank && m_game_started) { RequestStackPush(StateID::kGameOver); }
-
 			if (m_active_state && m_has_focus)
 			{
 				CommandQueue& commands = m_world.GetCommandQueue();
