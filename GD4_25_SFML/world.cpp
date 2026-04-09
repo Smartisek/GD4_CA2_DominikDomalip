@@ -107,6 +107,17 @@ void World::Update(sf::Time dt)
 		}
 	}
 
+	//dont mengle with tanks that are marked for removal 
+	if (m_networked_world)
+	{
+		m_player_tanks.erase(std::remove_if(m_player_tanks.begin(), m_player_tanks.end(),
+			[](Tank* tank)
+			{
+				return tank && tank->IsMarkedForRemoval();
+			}),
+			m_player_tanks.end());
+	}
+
 	m_scene_graph.RemoveWrecks();
 
 	// Update Scene Graph (Animations, Movement)
