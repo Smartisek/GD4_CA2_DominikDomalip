@@ -20,6 +20,7 @@ namespace Server
 		kPlayerDisconnect, //takes sf::Int32 tank ID when player disconnects so we are able to remove him
 		kSpawnPickup, //takes sf::Int32 for pickup type in PickupType.hpp and the position
 		kSpawnProjectile, //takes sf::Int32 for projectile type in ProjectileType.hpp and the position
+		kTurretState, // turret rotations
 		kUpdateClientState, // server will send this to clients every frame, it will contain all the information about tanks, projectiles and pickups on the map 
 		kGameEvent, // this will be used to send game events such as player killed, player won, etc
 		kMissionSuccess, //to give the game over screen to clients, takes the player ID of the winner

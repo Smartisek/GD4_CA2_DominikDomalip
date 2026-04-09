@@ -41,6 +41,7 @@ GameServer::GameServer(sf::Vector2f battlefieldSize)
 	, m_thread(&GameServer::ExecutionThread, this)
 	, m_turret_fire_cooldown(sf::Time::Zero)
 	, m_turret_position(battlefieldSize.x / 2.f, battlefieldSize.y / 2.f)
+	, m_turret_rotation(0.f)
 {
 	m_listener_socket.setBlocking(false);
 	m_peers[0].reset(new RemotePeer); //reservation for server itself
@@ -1012,12 +1013,6 @@ void GameServer::UpdateTurret(float dt)
 {
 	const TurretData& turret = TurretTable[static_cast<int>(TurretType::kStandard)];
 
-	m_turret_fire_cooldown -= sf::seconds(dt);
-	if (m_turret_fire_cooldown > sf::Time::Zero)
-	{
-		return;
-	}
-
 	TankInfo* closestTank = nullptr;
 	float minDist = turret.m_range;
 
@@ -1036,22 +1031,43 @@ void GameServer::UpdateTurret(float dt)
 			minDist = dist;
 			closestTank = &pair.second;
 		}
-
-		if (!closestTank)
-		{
-			return;
-		}
-
-		sf::Vector2f dir = Utility::Normalise(closestTank->m_position - m_turret_position);
-
-		ProjectileInfo projectile; 
-		projectile.m_type = turret.m_bullet_type;
-		projectile.m_owner_id = 255; // give it a special owner id to know it is turret projectile and not player projectile 
-		projectile.m_position = m_turret_position + dir * 60.f;
-		projectile.m_velocity = dir * ProjectileTable[static_cast<int>(turret.m_bullet_type)].m_speed;
-
-		m_projectiles.push_back(projectile);
-		m_turret_fire_cooldown = turret.m_fire_interval;
-
 	}
+
+	if (!closestTank)
+	{
+		return;
+	}
+
+	sf::Vector2f dir = Utility::Normalise(closestTank->m_position - m_turret_position);
+	m_turret_rotation = Utility::ToDegrees(std::atan2(dir.y, dir.x)) + 90.f;
+
+	// send rotation every tick (smooth visuals)
+	sf::Packet turretPacket;
+	turretPacket << static_cast<uint8_t>(Server::PacketType::kTurretState)
+		<< m_turret_rotation;
+	SendToAll(turretPacket);
+
+	// fire only when cooldown expires
+	m_turret_fire_cooldown -= sf::seconds(dt);
+	if (m_turret_fire_cooldown > sf::Time::Zero)
+	{
+		return;
+	}
+
+	ProjectileInfo projectile;
+	projectile.m_type = turret.m_bullet_type;
+	projectile.m_owner_id = 255;
+	projectile.m_position = m_turret_position + dir * 60.f;
+	projectile.m_velocity = dir * ProjectileTable[static_cast<int>(turret.m_bullet_type)].m_speed;
+
+	m_projectiles.push_back(projectile);
+	m_turret_fire_cooldown = turret.m_fire_interval;
+
+	sf::Packet shotPacket;
+	shotPacket << static_cast<uint8_t>(Server::PacketType::kSpawnProjectile)
+		<< static_cast<uint8_t>(projectile.m_type)
+		<< projectile.m_position.x << projectile.m_position.y
+		<< projectile.m_velocity.x << projectile.m_velocity.y
+		<< projectile.m_owner_id;
+	SendToAll(shotPacket);
 }

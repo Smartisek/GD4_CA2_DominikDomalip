@@ -4,6 +4,7 @@
 #include "utility.hpp"
 #include <iostream>
 #include <SFML/Network/IpAddress.hpp>
+#include "turret.hpp"
 
 MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, bool is_host)
 	: State(stack, context)
@@ -410,6 +411,33 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 			}
 			break;
 		}
+
+		case Server::PacketType::kSpawnProjectile:
+		{
+			uint8_t type, ownerId;
+			sf::Vector2f position, velocity;
+
+			packet >> type >> position.x >> position.y >> velocity.x >> velocity.y >> ownerId;
+
+			m_world.CreateProjectile(static_cast<ProjectileType>(type), position, velocity, ReceiverCategories::kEnemyProjectile, ownerId);
+			break;
+		}
+
+		case Server::PacketType::kTurretState:
+		{
+			float rotation;
+			packet >> rotation;
+
+			Command turretCommand;
+			turretCommand.category = static_cast<int>(ReceiverCategories::kEnemy);
+			turretCommand.action = DerivedAction<Turret>([rotation](Turret& turret, sf::Time)
+				{
+					turret.setRotation(sf::degrees(rotation));
+				});
+			m_world.GetCommandQueue().Push(turretCommand);
+			break;
+		}
+
 		//will need to add more packet types for things like events, pickups etc
 		default:
 			break;

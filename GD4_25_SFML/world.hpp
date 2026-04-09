@@ -12,6 +12,8 @@
 #include "popup_type.hpp"
 #include "network_node.hpp"
 #include "pickup.hpp"
+#include "receiver_categories.hpp"
+#include "projectile_type.hpp"
 
 class World
 {
@@ -35,6 +37,7 @@ public:
 	void CreatePickup(uint8_t type, sf::Vector2f position, uint16_t id);
 	void RemovePickup(uint16_t id);
 	void CreatePopup(sf::Vector2f position, PopupType type, const std::string& text);
+	void CreateProjectile(ProjectileType type, sf::Vector2f position, sf::Vector2f velocity, ReceiverCategories owner, uint8_t ownerId);
 
 private:
 	void LoadTextures();

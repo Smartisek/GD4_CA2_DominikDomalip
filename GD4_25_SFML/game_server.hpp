@@ -135,6 +135,7 @@ private:
 	std::vector<ProjectileInfo> m_projectiles;
 	sf::Vector2f m_turret_position;
 	sf::Time m_turret_fire_cooldown;
+	float m_turret_rotation;
 
 };
 
