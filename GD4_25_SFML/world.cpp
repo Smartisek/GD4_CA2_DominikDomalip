@@ -414,6 +414,13 @@ void World::HandleCollisions() {
 			auto& bullet = static_cast<Projectile&>(*pair.first);
 			auto& turret = static_cast<Turret&>(*pair.second);
 
+			//currently dont allow damaging the turret in multiplayer, this needs a redo if wanted 
+			if (m_networked_world)
+			{
+				bullet.Destroy();
+				continue;         
+			}
+
 			turret.Damage(bullet.GetDamage());
 			bullet.Destroy();
 
@@ -845,5 +852,17 @@ void World::CreateProjectile(ProjectileType type, sf::Vector2f position, sf::Vec
 	float angle = std::atan2(velocity.y, velocity.x);
 	projectile->setRotation(sf::degrees(Utility::ToDegrees(angle) + 90.f));
 
+	if (type == ProjectileType::kTurretBullet || owner == ReceiverCategories::kEnemyProjectile)
+	{
+		Command soundCommand;
+		soundCommand.category = static_cast<int>(ReceiverCategories::kSoundEffect);
+		soundCommand.action = DerivedAction<SoundNode>([position](SoundNode& node, sf::Time)
+			{
+				node.PlaySound(SoundEffect::kTurretFire, position);
+			});
+		m_command_queue.Push(soundCommand);
+	}
+
 	m_scene_layers[static_cast<int>(SceneLayers::kUpperGround)]->AttachChild(std::move(projectile));
+
 }
