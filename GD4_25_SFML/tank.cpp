@@ -56,6 +56,8 @@ Tank::Tank(int identifier, TankType type, const TextureHolder& textures, const F
 	, m_next_shot_missile(false)
 	, m_textures(textures)
 	, m_outline_scale(1.1f)
+	, m_local_label(fonts.Get(FontID::kMain))
+	, m_is_local(false)
 {
 
 	m_explosion.SetFrameSize(sf::Vector2i(256,256));
@@ -113,12 +115,18 @@ Tank::Tank(int identifier, TankType type, const TextureHolder& textures, const F
 
 	//Ammo showup ui
 	m_ammo_icon.setScale(sf::Vector2f(1.f, 1.f));
-	m_ammo_icon.setPosition(sf::Vector2f(-60.f, 190.f));
+	m_ammo_icon.setPosition(sf::Vector2f(-60.f, 185.f));
 
 	m_ammo_text.setCharacterSize(30);
 	m_ammo_text.setFillColor(sf::Color::Black);
 	m_ammo_text.setString("x " + std::to_string(m_current_ammo));
 	m_ammo_text.setPosition({ -10.f, 185.f });
+
+	m_local_label.setString("YOUR TANK");
+	m_local_label.setCharacterSize(18);
+	m_local_label.setFillColor(sf::Color::Black);
+	m_local_label.setPosition({ 0.f, 235.f });
+	Utility::CentreOrigin(m_local_label);
 }
 
 void Tank::DrawCurrent(sf::RenderTarget& target, sf::RenderStates states) const
@@ -141,6 +149,11 @@ void Tank::DrawCurrent(sf::RenderTarget& target, sf::RenderStates states) const
 
 		target.draw(m_ammo_icon, states);
 		target.draw(m_ammo_text, states);
+
+		if (m_is_local)
+		{
+			target.draw(m_local_label, states);
+		}
 
 		// outline behind the tank
 		target.draw(m_outline_sprite, states);
@@ -166,6 +179,7 @@ void Tank::UpdateCurrent(sf::Time dt, CommandQueue& commands)
 	UpdateHealthBar();
 	UpdateStaminaBar();
 
+	//*****this was for local multiplayer now not needed because server handles it, if no commented out the tank would be jittering****
 	//if (std::abs(velocity.x) > 1.0f || std::abs(velocity.y) > 1.0f) //check if we are moving 
 	//{
 
@@ -510,4 +524,9 @@ void Tank::UpdatePlayerColor()
 {
 	const std::size_t index = static_cast<std::size_t>(std::abs(m_identifier)) % kPlayerColors.size();
 	m_outline_sprite.setColor(kPlayerColors[index]);
+}
+
+void Tank::SetLocalPlayer(bool isLocal)
+{
+	m_is_local = isLocal;
 }

@@ -247,6 +247,11 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 				tank->setPosition(position);
 				std::cout << "[DEBUG] setPosition done" << std::endl;
 
+				if (identifier == *GetContext().local_id)
+				{
+					tank->SetLocalPlayer(true);
+				}
+
 				//only add to player map if not local player, local player already created in lobby and added to world
 				if (std::find(m_local_player_identifiers.begin(), m_local_player_identifiers.end(), identifier) == m_local_player_identifiers.end())
 				{
