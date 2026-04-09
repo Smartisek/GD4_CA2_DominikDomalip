@@ -495,6 +495,10 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 			uint8_t deadId;
 			packet >> deadId;
 
+			//remove the player 
+			m_world.RemoveTank(deadId);
+			m_players.erase(deadId);
+
 			if (deadId == *GetContext().local_id)
 			{
 				m_game_over = true;
