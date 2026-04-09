@@ -48,42 +48,39 @@ void World::Update(sf::Time dt)
 	GuideMissile();
 	UpdateSounds();
 
-	if (!m_networked_world)
+	//find alive tanks and update the turret target for those
+	std::vector<sf::Vector2f> activeTankPositions;
+	for (Tank* tank : m_player_tanks)
 	{
-		//find alive tanks and update the turret target for those
-		std::vector<sf::Vector2f> activeTankPositions;
-		for (Tank* tank : m_player_tanks)
+		if (tank && !tank->IsDestroyed())
 		{
-			if (tank && !tank->IsDestroyed())
-			{
-				activeTankPositions.push_back(tank->GetWorldPosition());
-			}
+			activeTankPositions.push_back(tank->GetWorldPosition());
 		}
-
-		Command turretCommand;
-		turretCommand.category = static_cast<int>(ReceiverCategories::kEnemy);
-		turretCommand.action = DerivedAction<Turret>([activeTankPositions](Turret& turret, sf::Time)
-			{
-				if (!activeTankPositions.empty())
-				{
-					sf::Vector2f turretPos = turret.GetWorldPosition();
-					sf::Vector2f closestPos = activeTankPositions[0];
-					float minDistance = std::numeric_limits<float>::max();
-
-					for (const auto& pos : activeTankPositions)
-					{
-						float distSq = std::pow(pos.x - turretPos.x, 2) + std::pow(pos.y - turretPos.y, 2);
-						if (distSq < minDistance)
-						{
-							minDistance = distSq;
-							closestPos = pos;
-						}
-						turret.UpdateTarget(closestPos);
-					}
-				}
-			});
-		m_command_queue.Push(turretCommand);
 	}
+
+	Command turretCommand;
+	turretCommand.category = static_cast<int>(ReceiverCategories::kEnemy);
+	turretCommand.action = DerivedAction<Turret>([activeTankPositions](Turret& turret, sf::Time)
+		{
+			if (!activeTankPositions.empty())
+			{
+				sf::Vector2f turretPos = turret.GetWorldPosition();
+				sf::Vector2f closestPos = activeTankPositions[0];
+				float minDistance = std::numeric_limits<float>::max();
+
+				for (const auto& pos : activeTankPositions)
+				{
+					float distSq = std::pow(pos.x - turretPos.x, 2) + std::pow(pos.y - turretPos.y, 2);
+					if (distSq < minDistance)
+					{
+						minDistance = distSq;
+						closestPos = pos;
+					}
+					turret.UpdateTarget(closestPos);
+				}
+			}
+		});
+	m_command_queue.Push(turretCommand);
 
 
 	//Process Input Commands
