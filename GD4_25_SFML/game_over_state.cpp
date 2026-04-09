@@ -18,6 +18,7 @@ GameOverState::GameOverState(StateStack& stack, Context context)
 		: "GAME OVER";
 
 	m_game_over_text.setCharacterSize(70);
+	m_game_over_text.setFillColor(sf::Color::White);
 	Utility::CentreOrigin(m_game_over_text);
 	m_game_over_text.setPosition(sf::Vector2f({ 0.5f * windowSize.x }, { 0.4f * windowSize.y }));
 

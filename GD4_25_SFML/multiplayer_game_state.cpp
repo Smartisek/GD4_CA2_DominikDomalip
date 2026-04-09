@@ -94,17 +94,6 @@ bool MultiplayerGameState::Update(sf::Time dt)
 	if (m_connected)
 	{
 
-		if (m_game_over && m_return_to_menu)
-		{
-			m_game_over_elapsed += dt;
-			if (m_game_over_elapsed >= m_game_over_delay)
-			{
-				RequestStackClear();
-				RequestStackPush(StateID::kMenu);
-			}
-			return true;
-		}
-
 		if (!m_active_state) { DisableAllRealtimeActions(true); }
 
 		if (m_scene_initialized)
