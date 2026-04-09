@@ -50,7 +50,10 @@ private:
 	sf::Time m_broadcast_elapsed_time;
 	//end game 
 	bool m_game_over;
+	bool m_return_to_menu;
 	sf::Text m_game_over_text;
 	sf::RectangleShape m_game_over_bg;
+	sf::Time m_game_over_delay;
+	sf::Time m_game_over_elapsed;
 };
 

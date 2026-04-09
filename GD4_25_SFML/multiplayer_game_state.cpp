@@ -23,6 +23,9 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
 	, m_failed_connection_text(context.fonts->Get(FontID::kMain))
 	, m_game_over(false)
 	, m_game_over_text(context.fonts->Get(FontID::kMain))
+	, m_return_to_menu(false)
+	, m_game_over_delay(sf::seconds(3.f))
+	, m_game_over_elapsed(sf::Time::Zero)
 {
 	sf::Vector2f windowSize = m_window.getView().getSize();
 
@@ -90,6 +93,17 @@ bool MultiplayerGameState::Update(sf::Time dt)
 {
 	if (m_connected)
 	{
+		if (m_game_over && m_return_to_menu)
+		{
+			m_game_over_elapsed += dt;
+			if (m_game_over_elapsed >= m_game_over_delay)
+			{
+				RequestStackClear();
+				RequestStackPush(StateID::kMenu);
+			}
+			return true;
+		}
+
 		if (!m_active_state) { DisableAllRealtimeActions(true); }
 
 		if (m_scene_initialized)
@@ -485,8 +499,12 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 
 			if (deadId == *GetContext().local_id)
 			{
-				RequestStackClear();
-				RequestStackPush(StateID::kMenu);
+				m_game_over = true;
+				m_return_to_menu = true;
+				m_game_over_elapsed = sf::Time::Zero;
+				m_game_over_text.setString("YOU LOST");
+				Utility::CentreOrigin(m_game_over_text);
+				m_game_over_text.setPosition(m_window.getView().getCenter());
 			}
 			break;
 		}
