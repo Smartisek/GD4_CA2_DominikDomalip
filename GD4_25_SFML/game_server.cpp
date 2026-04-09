@@ -10,11 +10,13 @@
 #include <iostream>
 #include "map_type.hpp"
 #include "constants.hpp"
+#include "turret_type.hpp"
 
 namespace
 {
 	const std::vector<TankData> TankTable = InitializeTankData();
 	const std::vector<ProjectileData> ProjectileTable = InitializeProjectileData();
+	const std::vector<TurretData> TurretTable = InitializeTurretData();
 }
 
 // important to set to non-blocking otherwise server will hang waiting to read input from connection
@@ -37,6 +39,8 @@ GameServer::GameServer(sf::Vector2f battlefieldSize)
 	, m_waiting_thread_end(false)
 	, m_peers(1)
 	, m_thread(&GameServer::ExecutionThread, this)
+	, m_turret_fire_cooldown(sf::Time::Zero)
+	, m_turret_position(battlefieldSize.x / 2.f, battlefieldSize.y / 2.f)
 {
 	m_listener_socket.setBlocking(false);
 	m_peers[0].reset(new RemotePeer); //reservation for server itself
@@ -160,7 +164,7 @@ void GameServer::Tick()
 	}
 
 	HandleTankCollisions(dt);
-
+	UpdateTurret(dt);
 	//reflect the projectile movement and check for collisions with tanks and boundaries
 	UpdateProjectiles(dt);
 
@@ -1001,5 +1005,53 @@ void GameServer::HandleTankCollisions(float dt)
 			clampPosition(tank1.m_position);
 			clampPosition(tank2.m_position);
 		}
+	}
+}
+
+void GameServer::UpdateTurret(float dt)
+{
+	const TurretData& turret = TurretTable[static_cast<int>(TurretType::kStandard)];
+
+	m_turret_fire_cooldown -= sf::seconds(dt);
+	if (m_turret_fire_cooldown > sf::Time::Zero)
+	{
+		return;
+	}
+
+	TankInfo* closestTank = nullptr;
+	float minDist = turret.m_range;
+
+	for (auto& pair : m_tank_info)
+	{
+		if (pair.second.m_hitpoints == 0)
+		{
+			continue;
+		}
+
+		sf::Vector2f diff = pair.second.m_position - m_turret_position;
+		float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y);
+
+		if (dist < minDist)
+		{
+			minDist = dist;
+			closestTank = &pair.second;
+		}
+
+		if (!closestTank)
+		{
+			return;
+		}
+
+		sf::Vector2f dir = Utility::Normalise(closestTank->m_position - m_turret_position);
+
+		ProjectileInfo projectile; 
+		projectile.m_type = turret.m_bullet_type;
+		projectile.m_owner_id = 255; // give it a special owner id to know it is turret projectile and not player projectile 
+		projectile.m_position = m_turret_position + dir * 60.f;
+		projectile.m_velocity = dir * ProjectileTable[static_cast<int>(turret.m_bullet_type)].m_speed;
+
+		m_projectiles.push_back(projectile);
+		m_turret_fire_cooldown = turret.m_fire_interval;
+
 	}
 }

@@ -102,6 +102,8 @@ private:
 	//tank to tank collision
 	void HandleTankCollisions(float dt);
 
+	void UpdateTurret(float dt);
+
 private:
 	//networking variables 
 	sf::Clock m_clock;
@@ -129,8 +131,10 @@ private:
 	uint16_t m_pickup_id_counter = 0;
 	sf::Time m_pickup_spawn_timer;
 
-	//projectiles 
+	//projectiles and turret 
 	std::vector<ProjectileInfo> m_projectiles;
+	sf::Vector2f m_turret_position;
+	sf::Time m_turret_fire_cooldown;
 
 };
 
