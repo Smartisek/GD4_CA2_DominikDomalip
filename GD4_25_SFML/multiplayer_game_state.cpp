@@ -106,7 +106,6 @@ bool MultiplayerGameState::Update(sf::Time dt)
 				if (!m_world.GetTank(itr->first))
 				{
 					itr = m_players.erase(itr);
-					if (m_players.empty()) RequestStackPush(StateID::kGameOver);
 				}
 				else
 				{
@@ -407,6 +406,7 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 				}
 				tank->PlayLocalSound(m_world.GetCommandQueue(), SoundEffect::kPickup);
 			}
+			break;
 		}
 
 		case Server::PacketType::kEntityDamage:
