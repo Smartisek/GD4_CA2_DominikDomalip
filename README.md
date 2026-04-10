@@ -14,65 +14,99 @@
 Outmaneuver and outgun your opponent. The last tank standing wins!
 
 
-## Client - Server Plan for CA2
-- I will be working with the class code and making it specific for my kind of game with the needs I need, one example is I do not need scroll speed, my maps are static and I rather will need rotation of the tanks synced etc...
+## CA2 Multiplayer with TCP - DATA
+- The main data transmission for synchronization happens inside the UpdateClientState function.
 
-###### Network Protocol 
-- My first step will be to introduce a common language for the Server an Client to communicate and basically agree on rules, which will be done by implementing a network protocol. 
-- The protocol will define packet identifiers (as Enums) and data structures. Packet identifiers will be a list of unique IDs such as kPlayerEvent or kUpdateClientState. 
-- They will be packed into sf::Packet. The main rule for the Packet is Data Sequencing which both Server and Client have to pack and unpack in the same order to prevent corruption of data.
-- In my tank game the protocol will be designed to take care of syncing rotation and ammo level etc..to ensure the Client's HUD is reflected accurately to the Server's authorative values.
+#### **Synchronization Packet Structure - Server to Client**
+kUpdateClientState packet is being sent to every client at a rate of 60hz.
 
-###### Game Server 
-- Currently my World class takes care of everything such as drawing, handling collisions, inputs..For CA2 I will need to create a Game Server class which will be kind of the headless version of my current world, where it will be running all the logic of my current World class but without the textures, sounds and window.
-- It will be managing my game's CommandQueue and instead of receiving commands from the local keyboard it will receive them as Packets from the Client and validate them, so to say for example check if this tank with this ID has enough stamina to dash, and apply them to the master state. This way we also prevent cheating because the Server has to validate the request. 
-- In my current version of the game I am using 144fps, I will see with testing if it is possible to keep or if I need to lower it but basically the will implement a "heartbeat" that will gather state of all entities in the game every fps and broadcast the UpdateClientState packet to all player's (clients) making everybody synchronized and seeing the same screen.
+| Field    |      Data Type   |  Size (Bytes) |           Description             |
+|----------|:----------------:|:-------------:|:----------------------------------:|
+| PacketType |  uint8_t    |      1           |  Server::PacketType::kUpdateClientState   |
+|Tank Count |    uint8_t      |       1     |      Number of tanks in the update                             |
+| Tank ID | uint8_t    |       1      |     Unique identifier for the tank                              |
+| Position X | float    |       4      |     X-coordinate of the tank                             |
+| Position Y | float    |       4      |     Y-coordinate of the tank                             |
+| Rotation | float    |       4      |     Rotation angle of the tank                            |
+| Hitpoints | uint8_t    |       1      |     Current health                           |
+| Current Ammo | uint8_t    |       1      |     Bullets ammount                           |
+| Missile Ammo | uint8_t    |       1      |     Missiles amount                           |
+| Stamina | float    |       4      |     Current stamina                           |
 
-###### Network Node
-- Currently in my game the SceneNode is only for rendering but in the client server version of the game I will need something to allow me send "global" events which are not tied to a specific tank, so event like spawn pickup or fire turret. 
-- For that I will have to introduce NetworkNode that will inherit from SceneNode and basically be a special SceneNode that sits at root of the graph and act like some kind of Mailbox.
-- So when Server sends a command that isn't a direct player move, the NetworkNode will receive the Packet and convert it back into standard Command for SceneGraph to process locally.
+```
+- Total Data per Player (tank): 20 Bytes
+- Packet Header: 2 Bytes (Type + Count)
+- Total Packet Size for N players: 2+ (20 x N) bytes
+```
 
-###### Multiplayer Game State
-- In the current version, my GameState handles both world and the local player, so I will need to implement Multiplayer Game State.
-- Multiplayer Game State won't be polling the keyboard to move tank directly. Instead it will poll Socket to see what Server said and send Input Packet to the Server. 
+#### Example of print statement in UpdateClientState of the packet size being sent for two players:
+```
+[SERVER] Update packet size: 42 bytes
+```
 
-###### How the Workflow will look
-1. ##### Handshake and Initialization (TCP protocol) 
-- Server will be ran on a local machine and Clients will connect to the Server's IP where Server will assign unique PlayerID and send InitialState packet.
-- In my current game, I have options for the player's to choose tank type and map so this is where the Server tells the Client which map to load, which tank was selected. The Client then builds the local Scene Graph and waits for the start signal. 
-- I will have to implement some logic to pick the final map, so something like random map from the selected which was draw, or selec the one with the most votes. 
+#### **Optimization Efforts in Development**
+- I am using uint8_t whenever I can instead of regular int - *uint8_t -> 1 byte  VS  int -> 4 bytes* - for fields such as IDs, health or ammo, because they do not need the 32-bit precision of a 4-byte integer, it would be waisting. All those fields will never get above 255 range size so with int there would be 3 bytes per field, per player, every single tick wasted. 
+- *By using uint8_t for 5 fields instead of int, I am saving 15 bytes per player. For 8 players at a 60Hz update rate, this is saves about 7.2KB/s of upload bandwidth.*
+- Centralized Physics, the server is authorative, performing physics updates in Tick() and only broadcasting the final state, which prevents clients from sending excessive physics data back to server. 
 
-2. ##### Client Input Capture (Client talking to the Server)
-- In this case the termial becomes kind of standing still terminal for input.
-- In the local current version of my game, the Player class pushes a commands to a local CommandQueue, in this case the Multiplayer Game State intercepts the keypresses.
-- It will packet the action (such as Fire, RotateRight) into a kPlayerRealtimeChange packet and sends it to the Server.
+#### **Bandwidth Requirements**
+```
+m_max_connected_players = 8 and update rate of 60Hz
+```
+1. #### **Server Upload (Outgoing Data)**
+This is the total amount of data the server pushes out to all connected clients. Happening in *UpdateClientState()*
+- Every 1/60th of a second, the server sends a single packet containing the status of all connected tanks (players).
+- This same packet is received by all clietns connected, each of the 8 playes if max players connected.
+##### Calculation brekdown:
+```
+- One packet size: 2 bytes (header) + (20 bytes per tank x 8 tanks) = 162 bytes
+- Data per Player: 162 bytes x 60  times per second = 9,720 bytes/second
+- Total for max 8 players: 9,720 bytes/second x 8 players = 77,760 bytes/sec = ~0.62 Mbps (0.62208)
+```
 
-3. ##### Server Processing and Authority 
-- Server will be the only place where the physics happen. 
-- Game Server receives input packets from all the Clients connected and pushes them into authorative (main and only) CommandQueue.
-- It runs the World::Update logic (which is now headless, no drawing etc) and checks if tank is hitting obstacle, if it has enough stamina to use dash or if a turret has spotted a player.
+2. #### **Server Downloading (Incoming Data)**
+This is the total amount of data the server receives from all clients combined. This is being send by each client in the *MultiplayerGameState::Update* function.
+- Each client sends its own local status (like position, rotation, etc.) back to the server so the server can maintain its authorative state.
+- The server receive one packet from each of the players connected every 1/60th of a second.
+##### Calculation brekdown:
+```
+- One client packet: ~22 bytes (header + local tank data)
+- Data from one player: 22 bytes x 60 times per second = 1,320 bytes/second
+- Total from all 8 players: 1,320 bytes/second x 8 players = 10,560 bytes/second = ~0.08 Mbps (0.08448)
+```
 
-4. ##### World Heartbeat (Server -> Client with UDP)
-- Once the Server has updated everything, it broadcasts it to the clients connected.
-- Every tick the Server sends a kUpdateClientState packet 
-- This packet will contain the coordinates on the map x/y, rotations in degrees, current HP, ammo...for every tank and projectiles in the world.
+The reason why upload is so much larger is because of the difference of the volume of information sent each packet. 
+- Incoming (Client -> Server): Each player only tells the server about themselves, worth 1 tank of data
+- Outgoing (Server -> Client): The server must tell every player about everyone else, worth 8 tanks of data 
 
-5. ##### Local Reconciliation and Rendering (Client side, its job)
-- At this point the Client receives the packet from Server and updates the visuals on its screen.
-- The Network Node unpack the heartbeat and moves the tanks sprites to the coordinates Server provided.
-- I will have to implement some kind of interpolation here because the network packets might arrive lower than my 144fps. It should smoothly slide the tanks from the old position to the new one rather than just teleport it there.
+#### **DKIT Network Estimation and PLayer Support**
+I am not sure what is the exact speed for our network in college so I will work with lower such as 100 Mbps even though it should be probably higher. 
+1. Current Capacity (8 players)
+- Total bandwidth required: ~0.70 Mbps (upload + download combined)
+- Network Utilization: On a 100 Mbps connection, 8 players utilize less than 1% of the available bandwidth
+- **Conclusion:** The game should run flawlessly on the DKIT network with 8 players, leaving a huge room for other network traffic and maintaining low latency. 
 
-###### Protocols Comparison
-1. TCP - Transmission Control Protocol - Reliability and Order
-- This TCP ensures that every packet sent arrives exactly once and in the correct order, if a packet gets lost, TCP will stop and re sent the packet.
-- This protocol will be used for important events where if we loose data it would break the game logic.
-- Example would be assigning PLayer IDs and syncing the selected Map Types at the start of the game or sending Start Game state.
+2. Theoretical Scalling (32 players)
+To demonstrate the efficiency of using uint8_t and centralized physics, we can estimate requirements for a much larger 32 player match:
+- Server Outgoing: 60Hz x 32 players x (2 + 20 x 32) bytes = 9.86 Mbps
+- Server Incoming: 60Hz x 32 players x 22 bytes = 0.34 Mbps
+- Theorerical total bandwidth = 10.2 Mbps
+```
+This shows that network bandwidth should not be a bottle neck for this game. More concern should be on CPU of the machine hosting the game running server where it needs to process physics calculations for dozens of tanks simultaneously. 
+```
 
-2. UDP - User Datagram Protocol - Speed and Unreliability
-- UDP sends packets as fast as possible without checking if they arrived. No re-transimission like with TCP, which eliminates the lags caused by TCP waiting for lost data.
-- This protocol will be used for the games heartbeat, data that changes so frequently that if we loose a packet, the next one arrives in a few milliseconds later and will render the old information anyway.
-- Example would be movement and rotation, we will be sending constatnt updates of xy position and angles or projectiles positions flying over the map.
+#### **Possible Improvements**
+1. Stamina and Rotation
+Stamina
+- Currently stamina is tracked as float however we could switch to use uint8_t as well to not send 4bytes but only 1byte instead. Since stamina is a value between 0-100, we can easily map it to uint8_t (0-255).
+- Before sending, we would multiply the stamina ratio by 255 and then on client side divide by 255 to get a float back. This will save 3 bytes per tank every update.
+Rotation
+- Rotation could also be changed to be mapped with uint8_t, since angles are 0-360 we can just map it to a single byte (0-255).
+- uint8_t compressedRotation = static_cast<uint8_t>((rotation / 360.f) * 255.f);
+- Another 3 bytes per tank every update saved.
+
+2. Bit-Packing for Booleans
+
 
 
 ==============================================================================================================================================================================================================================
