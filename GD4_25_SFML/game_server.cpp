@@ -214,6 +214,13 @@ void GameServer::HandleIncomingConnections()
 			m_tank_info[tankID].m_position = sf::Vector2f(0.f, 0.f);
 			m_tank_info[tankID].m_collision_cooldown = 0.f;
 			m_tank_info[tankID].m_map_vote = 255; // not voted yet
+
+			const TankData& stats = TankTable[m_tank_info[tankID].m_tank_type];
+			m_tank_info[tankID].m_hitpoints = stats.m_hitpoints;
+			m_tank_info[tankID].stamina = stats.m_max_stamina;
+			m_tank_info[tankID].m_current_ammo = stats.m_ammo_amount;
+			m_tank_info[tankID].m_missile_ammo = 0;
+
 			//setting the tank id for new connections to receive and update
 			m_peers[m_connected_players]->m_tank_identifiers.push_back(tankID);
 			m_peers[m_connected_players]->m_ready = true;

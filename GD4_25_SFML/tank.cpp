@@ -516,8 +516,7 @@ void Tank::SetMissileAmmo(uint8_t ammo)
 
 void Tank::SetStamina(float stamina)
 {
-	float ratio = std::clamp(stamina, 0.f, 1.f);
-	m_stamina = ratio * GetMaxStamina();
+	m_stamina = std::clamp(stamina, 0.f, GetMaxStamina());
 }
 
 void Tank::UpdatePlayerColor()
