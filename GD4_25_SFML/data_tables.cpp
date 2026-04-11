@@ -81,7 +81,7 @@ std::vector<ProjectileData> InitializeProjectileData()
 	data[static_cast<int>(ProjectileType::kTurretBullet)].m_texture = TextureID::kTurretPlasma;
 
 	data[static_cast<int>(ProjectileType::kMissile)].m_damage = 60;
-	data[static_cast<int>(ProjectileType::kMissile)].m_speed = 600;
+	data[static_cast<int>(ProjectileType::kMissile)].m_speed = 1000;
 	data[static_cast<int>(ProjectileType::kMissile)].m_texture = TextureID::kMissile;
 
 	return data;
