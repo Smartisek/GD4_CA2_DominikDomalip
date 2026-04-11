@@ -63,6 +63,7 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
 
 void MultiplayerGameState::Draw()
 {
+
 	if (m_connected)
 	{
 		m_world.Draw();
@@ -91,6 +92,16 @@ void MultiplayerGameState::Draw()
 
 bool MultiplayerGameState::Update(sf::Time dt)
 {
+	if (m_return_to_menu)
+	{
+		m_game_over_elapsed += dt;
+		if (m_game_over_elapsed >= m_game_over_delay)
+		{
+			RequestStackClear();
+			RequestStackPush(StateID::kGameOver);
+		}
+	}
+
 	if (m_connected)
 	{
 
@@ -472,8 +483,9 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 			*GetContext().game_over_message = (winnerId == *GetContext().local_id)
 				? "YOU WIN!"
 				: "PLAYER " + std::to_string(winnerId) + " WINS!";
-			RequestStackClear();
-			RequestStackPush(StateID::kGameOver);
+			m_game_over = true;
+			m_return_to_menu = true;
+			m_game_over_elapsed = sf::Time::Zero;
 			break;
 		}
 
@@ -485,8 +497,9 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 			if (deadId == *GetContext().local_id)
 			{
 				*GetContext().game_over_message = "YOU LOST";
-				RequestStackClear();
-				RequestStackPush(StateID::kGameOver);
+				m_game_over = true;
+				m_return_to_menu = true;
+				m_game_over_elapsed = sf::Time::Zero;
 			}
 			break;
 		}
