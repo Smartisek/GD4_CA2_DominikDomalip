@@ -106,9 +106,19 @@ Rotation
 - Another 3 bytes per tank every update saved.
 
 2. Bit-Packing for Booleans
-
-
-
+For booleans we should use bit-tracking instead of sending standalone booleans because, yes boolean is 1 byte, but if we pack many of them and send them that will be 1 byte for every boolean.
+- Instead of sending multiple 1-byte booleans, we can use single uint8_t (which is also 1 byte) and assign each boolean to a specific bit slot using bitwise operators.
+```
+Bit 0: m_is_ready
+Bit 1: isSprinting
+Bit 2: isFiring
+and so on... up to 8 states for use of 1 byte
+```
+This is not a big deal in my current game, this is just optimazation for future where we could save a lot of space. Since server updates 60Hz, these small savings can get significant over time if we add more gameplay features.
+For example:
+- Without Bit-Packing: if we have 8 booleans for 8 players, we are sending 64 bytes of boolean data every tick. At 60Hz this gets to 3,840 bytes per second.
+- With Bit-Packing: We pack those same 8 booleans into 1 byte per player. Now we would be sending only 8 bytes per tick. At 60Hz this would only be 480 bytes per second.
+- The result is badwidth for those states reduced by more than 85%.
 ==============================================================================================================================================================================================================================
 
 ### REFERENCES 
