@@ -103,6 +103,8 @@ private:
 	void HandleTankCollisions(float dt);
 
 	void UpdateTurret(float dt);
+	void CheckForWinner();
+	void NotifyPlayerEliminated(uint8_t tank_identifier);
 
 private:
 	//networking variables 
@@ -136,6 +138,7 @@ private:
 	sf::Vector2f m_turret_position;
 	sf::Time m_turret_fire_cooldown;
 	float m_turret_rotation;
+	bool m_game_finished = false;
 
 };
 

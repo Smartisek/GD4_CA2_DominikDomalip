@@ -107,6 +107,17 @@ void World::Update(sf::Time dt)
 		}
 	}
 
+	//dont mengle with tanks that are marked for removal 
+	if (m_networked_world)
+	{
+		m_player_tanks.erase(std::remove_if(m_player_tanks.begin(), m_player_tanks.end(),
+			[](Tank* tank)
+			{
+				return tank && tank->IsMarkedForRemoval();
+			}),
+			m_player_tanks.end());
+	}
+
 	m_scene_graph.RemoveWrecks();
 
 	// Update Scene Graph (Animations, Movement)
@@ -413,6 +424,13 @@ void World::HandleCollisions() {
 		{
 			auto& bullet = static_cast<Projectile&>(*pair.first);
 			auto& turret = static_cast<Turret&>(*pair.second);
+
+			//currently dont allow damaging the turret in multiplayer, this needs a redo if wanted 
+			if (m_networked_world)
+			{
+				bullet.Destroy();
+				continue;         
+			}
 
 			turret.Damage(bullet.GetDamage());
 			bullet.Destroy();
@@ -795,10 +813,17 @@ Tank* World::GetTank(uint8_t identifier) const
 void World::RemoveTank(uint8_t identifier)
 {
 	Tank* tank = GetTank(identifier);
-	if (tank)
+	if (!tank)
 	{
-		tank->Destroy();
-		m_player_tanks.erase(std::find(m_player_tanks.begin(), m_player_tanks.end(), tank));
+		return;
+	}
+
+	tank->Destroy();
+
+	auto it = std::find(m_player_tanks.begin(), m_player_tanks.end(), tank);
+	if (it != m_player_tanks.end())
+	{
+		m_player_tanks.erase(it);
 	}
 }
 
@@ -845,5 +870,17 @@ void World::CreateProjectile(ProjectileType type, sf::Vector2f position, sf::Vec
 	float angle = std::atan2(velocity.y, velocity.x);
 	projectile->setRotation(sf::degrees(Utility::ToDegrees(angle) + 90.f));
 
+	if (type == ProjectileType::kTurretBullet || owner == ReceiverCategories::kEnemyProjectile)
+	{
+		Command soundCommand;
+		soundCommand.category = static_cast<int>(ReceiverCategories::kSoundEffect);
+		soundCommand.action = DerivedAction<SoundNode>([position](SoundNode& node, sf::Time)
+			{
+				node.PlaySound(SoundEffect::kTurretFire, position);
+			});
+		m_command_queue.Push(soundCommand);
+	}
+
 	m_scene_layers[static_cast<int>(SceneLayers::kUpperGround)]->AttachChild(std::move(projectile));
+
 }

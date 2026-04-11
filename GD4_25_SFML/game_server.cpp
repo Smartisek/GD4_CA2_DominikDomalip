@@ -168,6 +168,7 @@ void GameServer::Tick()
 	UpdateTurret(dt);
 	//reflect the projectile movement and check for collisions with tanks and boundaries
 	UpdateProjectiles(dt);
+	CheckForWinner();
 
 	//pickups spawning handle 
 	if (m_game_started)
@@ -213,6 +214,13 @@ void GameServer::HandleIncomingConnections()
 			m_tank_info[tankID].m_position = sf::Vector2f(0.f, 0.f);
 			m_tank_info[tankID].m_collision_cooldown = 0.f;
 			m_tank_info[tankID].m_map_vote = 255; // not voted yet
+
+			const TankData& stats = TankTable[m_tank_info[tankID].m_tank_type];
+			m_tank_info[tankID].m_hitpoints = stats.m_hitpoints;
+			m_tank_info[tankID].stamina = stats.m_max_stamina;
+			m_tank_info[tankID].m_current_ammo = stats.m_ammo_amount;
+			m_tank_info[tankID].m_missile_ammo = 0;
+
 			//setting the tank id for new connections to receive and update
 			m_peers[m_connected_players]->m_tank_identifiers.push_back(tankID);
 			m_peers[m_connected_players]->m_ready = true;
@@ -695,7 +703,7 @@ void GameServer::HandlePickupCollisions()
 			float dy = tank.m_position.y - it->m_position.y;
 			float distSqrt = dx * dx + dy * dy; //pythagoras
 
-			const float pickupRadius = 80.f;
+			const float pickupRadius = 120.f;
 			if (distSqrt < pickupRadius * pickupRadius)
 			{
 				uint8_t gameActionType;
@@ -885,6 +893,12 @@ void GameServer::UpdateProjectiles(float dt)
 				SendToAll(packet);
 
 				hit = true;
+
+				if (newHP == 0)
+				{
+					NotifyPlayerEliminated(tankID);
+				}
+
 				break;
 			}
 		}
@@ -936,6 +950,12 @@ void GameServer::HandleTankCollisions(float dt)
 				<< rammingDamage;
 
 			SendToAll(packet);
+
+			if (newHp == 0)
+			{
+				NotifyPlayerEliminated(id);
+			}
+
 			return true;
 		};
 
@@ -1056,13 +1076,13 @@ void GameServer::UpdateTurret(float dt)
 	sf::Vector2f dir = Utility::Normalise(closestTank->m_position - m_turret_position);
 	m_turret_rotation = Utility::ToDegrees(std::atan2(dir.y, dir.x)) + 90.f;
 
-	// send rotation every tick (smooth visuals)
+	// send rotation every tick
 	sf::Packet turretPacket;
 	turretPacket << static_cast<uint8_t>(Server::PacketType::kTurretState)
 		<< m_turret_rotation;
 	SendToAll(turretPacket);
 
-	// fire only when cooldown expires
+	//fire only when cooldown expires
 	m_turret_fire_cooldown -= sf::seconds(dt);
 	if (m_turret_fire_cooldown > sf::Time::Zero)
 	{
@@ -1085,4 +1105,47 @@ void GameServer::UpdateTurret(float dt)
 		<< projectile.m_velocity.x << projectile.m_velocity.y
 		<< projectile.m_owner_id;
 	SendToAll(shotPacket);
+}
+
+void GameServer::CheckForWinner()
+{
+	if (m_game_finished || !m_game_started)
+	{
+		return;
+	}
+
+	uint8_t aliveId = 0;
+	int aliveCount = 0;
+
+	for (const auto& [id, tank] : m_tank_info)
+	{
+		if (tank.m_hitpoints > 0)
+		{
+			aliveId = id;
+			++aliveCount;
+		}
+	}
+
+	if (aliveCount <= 1)
+	{
+		m_game_finished = true;
+
+		sf::Packet packet;
+		packet << static_cast<uint8_t>(Server::PacketType::kMissionSuccess)
+			<< aliveId;
+		SendToAll(packet);
+	}
+}
+
+void GameServer::NotifyPlayerEliminated(uint8_t tank_identifier)
+{
+	sf::Packet packetMessage;
+	packetMessage << static_cast<uint8_t>(Server::PacketType::kBroadcastMessage)
+			<< ("Player " + std::to_string(tank_identifier) + " was destroyed!");
+	SendToAll(packetMessage);
+
+	sf::Packet packet;
+	packet << static_cast<uint8_t>(Server::PacketType::kPlayerEliminated)
+			<< tank_identifier;
+	SendToAll(packet);
 }

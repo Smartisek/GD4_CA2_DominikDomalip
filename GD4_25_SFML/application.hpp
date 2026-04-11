@@ -40,5 +40,6 @@ private:
 	KeyBinding m_keys1;
 	KeyBinding m_keys2;
 	bool m_multiplayer_host;
+	std::string m_game_over_message;
 };
 

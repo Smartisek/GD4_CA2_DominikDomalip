@@ -44,6 +44,7 @@ public:
 	void SetAmmo(int ammo);
 	void SetMissileAmmo(uint8_t ammo);
 	void SetStamina(float stamina);
+	void SetLocalPlayer(bool isLocal);
 
 
 private:
@@ -95,5 +96,7 @@ private:
 	float m_anim_timer;
 
 	int m_identifier;
+	sf::Text m_local_label;
+	bool m_is_local;
 };
 

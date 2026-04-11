@@ -21,6 +21,11 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
 	, m_time_since_last_packet(sf::seconds(kClientTimeout))
 	, m_broadcast_text(context.fonts->Get(FontID::kMain))
 	, m_failed_connection_text(context.fonts->Get(FontID::kMain))
+	, m_game_over(false)
+	, m_game_over_text(context.fonts->Get(FontID::kMain))
+	, m_return_to_menu(false)
+	, m_game_over_delay(sf::seconds(3.f))
+	, m_game_over_elapsed(sf::Time::Zero)
 {
 	sf::Vector2f windowSize = m_window.getView().getSize();
 
@@ -34,6 +39,14 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
 	m_failed_connection_text.setFillColor(sf::Color::White);
 	Utility::CentreOrigin(m_failed_connection_text);
 	m_failed_connection_text.setPosition(sf::Vector2f(m_window.getSize().x / 2.f, m_window.getSize().y / 2.f));
+
+	//game over drawing setup
+	m_game_over_text.setCharacterSize(70);
+	m_game_over_text.setFillColor(sf::Color::White);
+	Utility::CentreOrigin(m_game_over_text);
+
+	m_game_over_bg.setFillColor(sf::Color(0, 0, 0, 180));
+	m_game_over_bg.setSize(m_window.getView().getSize());
 
 	sf::TcpSocket* socket = GetContext().socket;
 	socket->setBlocking(false);
@@ -54,6 +67,14 @@ void MultiplayerGameState::Draw()
 	{
 		m_world.Draw();
 
+		if (m_game_over)
+		{
+			m_game_over_bg.setSize(m_window.getView().getSize());
+			m_window.draw(m_game_over_bg);
+			m_window.draw(m_game_over_text);
+			return;
+		}
+
 		// Show UI overlays (Broadcasts)
 		m_window.setView(m_window.getDefaultView());
 		if (!m_broadcasts.empty())
@@ -72,6 +93,7 @@ bool MultiplayerGameState::Update(sf::Time dt)
 {
 	if (m_connected)
 	{
+
 		if (!m_active_state) { DisableAllRealtimeActions(true); }
 
 		if (m_scene_initialized)
@@ -88,15 +110,12 @@ bool MultiplayerGameState::Update(sf::Time dt)
 				if (!m_world.GetTank(itr->first))
 				{
 					itr = m_players.erase(itr);
-					if (m_players.empty()) RequestStackPush(StateID::kGameOver);
 				}
 				else
 				{
 					++itr;
 				}
 			}
-
-			if (!found_local_tank && m_game_started) { RequestStackPush(StateID::kGameOver); }
 
 			if (m_active_state && m_has_focus)
 			{
@@ -247,6 +266,11 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 				tank->setPosition(position);
 				std::cout << "[DEBUG] setPosition done" << std::endl;
 
+				if (identifier == *GetContext().local_id)
+				{
+					tank->SetLocalPlayer(true);
+				}
+
 				//only add to player map if not local player, local player already created in lobby and added to world
 				if (std::find(m_local_player_identifiers.begin(), m_local_player_identifiers.end(), identifier) == m_local_player_identifiers.end())
 				{
@@ -384,6 +408,7 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 				}
 				tank->PlayLocalSound(m_world.GetCommandQueue(), SoundEffect::kPickup);
 			}
+			break;
 		}
 
 		case Server::PacketType::kEntityDamage:
@@ -435,6 +460,34 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 					turret.setRotation(sf::degrees(rotation));
 				});
 			m_world.GetCommandQueue().Push(turretCommand);
+			break;
+		}
+
+		case Server::PacketType::kMissionSuccess:
+		{
+			uint8_t winnerId;
+			packet >> winnerId;
+
+			//if winner is local player show win message 
+			*GetContext().game_over_message = (winnerId == *GetContext().local_id)
+				? "YOU WIN!"
+				: "PLAYER " + std::to_string(winnerId) + " WINS!";
+			RequestStackClear();
+			RequestStackPush(StateID::kGameOver);
+			break;
+		}
+
+		case Server::PacketType::kPlayerEliminated:
+		{
+			uint8_t deadId;
+			packet >> deadId;
+
+			if (deadId == *GetContext().local_id)
+			{
+				*GetContext().game_over_message = "YOU LOST";
+				RequestStackClear();
+				RequestStackPush(StateID::kGameOver);
+			}
 			break;
 		}
 
