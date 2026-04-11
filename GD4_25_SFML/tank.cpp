@@ -261,8 +261,8 @@ void Tank::CreateBullet(SceneNode& node, const TextureHolder& textures) const
 			// I currently only have two types of projectiles, later can CHANGE HERE BULLETS SPRITES
 		case TankType::kTank1: projType = ProjectileType::kTank1Bullet; break;
 		case TankType::kTank2: projType = ProjectileType::kTank2Bullet; break;
-		case TankType::kTank3: projType = ProjectileType::kTank1Bullet; break;
-		case TankType::kTank4: projType = ProjectileType::kTank2Bullet; break;
+		case TankType::kTank3: projType = ProjectileType::kTank3Bullet; break;
+		case TankType::kTank4: projType = ProjectileType::kTank4Bullet; break;
 		default: projType = ProjectileType::kTank1Bullet; break;
 		}
 	}

@@ -24,7 +24,7 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
 	, m_game_over(false)
 	, m_game_over_text(context.fonts->Get(FontID::kMain))
 	, m_return_to_menu(false)
-	, m_game_over_delay(sf::seconds(3.f))
+	, m_game_over_delay(sf::seconds(1.2f))
 	, m_game_over_elapsed(sf::Time::Zero)
 {
 	sf::Vector2f windowSize = m_window.getView().getSize();
