@@ -55,7 +55,7 @@ Tank::Tank(int identifier, TankType type, const TextureHolder& textures, const F
 	, m_missile_ammo(0)
 	, m_next_shot_missile(false)
 	, m_textures(textures)
-	, m_outline_scale(1.1f)
+	, m_outline_scale(1.0f)
 	, m_local_label(fonts.Get(FontID::kMain))
 	, m_is_local(false)
 {
@@ -123,8 +123,11 @@ Tank::Tank(int identifier, TankType type, const TextureHolder& textures, const F
 	m_ammo_text.setPosition({ -10.f, 185.f });
 
 	m_local_label.setString("YOUR TANK");
-	m_local_label.setCharacterSize(18);
-	m_local_label.setFillColor(sf::Color::Black);
+	m_local_label.setCharacterSize(20);
+	m_local_label.setStyle(sf::Text::Bold);
+	m_local_label.setFillColor(sf::Color::White);
+	m_local_label.setOutlineColor(sf::Color(0, 0, 0, 220));
+	m_local_label.setOutlineThickness(3.f);
 	m_local_label.setPosition({ 0.f, 235.f });
 	Utility::CentreOrigin(m_local_label);
 }
@@ -152,13 +155,21 @@ void Tank::DrawCurrent(sf::RenderTarget& target, sf::RenderStates states) const
 
 		if (m_is_local)
 		{
+			sf::Text shadow = m_local_label;
+			shadow.move({ 2.f, 2.f });
+			shadow.setFillColor(sf::Color(0, 0, 0, 180));
+			shadow.setOutlineThickness(0.f);
+
+			target.draw(shadow, states);
 			target.draw(m_local_label, states);
 		}
 
-		// outline behind the tank
-		target.draw(m_outline_sprite, states);
 		// main stprite
 		target.draw(m_sprite, states);
+		// subtle color highlight overlay
+		sf::RenderStates highlightStates = states;
+		highlightStates.blendMode = sf::BlendAdd;
+		target.draw(m_outline_sprite, highlightStates);
 
 		if (m_show_fire_animation)
 		{
@@ -522,7 +533,12 @@ void Tank::SetStamina(float stamina)
 void Tank::UpdatePlayerColor()
 {
 	const std::size_t index = static_cast<std::size_t>(std::abs(m_identifier)) % kPlayerColors.size();
-	m_outline_sprite.setColor(kPlayerColors[index]);
+	sf::Color tint = kPlayerColors[index];
+	tint.a = 70;
+	m_outline_sprite.setColor(tint);
+
+	m_local_label.setOutlineColor(sf::Color(0, 0, 0, 220));
+	m_local_label.setFillColor(sf::Color::White);
 }
 
 void Tank::SetLocalPlayer(bool isLocal)
