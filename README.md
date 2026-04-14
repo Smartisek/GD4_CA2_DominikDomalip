@@ -1,4 +1,4 @@
-# *** GD4_CA1_DominikDomalip ***
+# *** GD4_CA2_DominikDomalip ***
 
 ## Armored Assault
 ![Title Image](./GD4_25_SFML/Media/Textures/TitleScreen.png)
